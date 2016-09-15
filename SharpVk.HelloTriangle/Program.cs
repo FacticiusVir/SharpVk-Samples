@@ -23,7 +23,6 @@
 using GlmSharp;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -75,7 +74,7 @@ namespace SharpVk.HelloTriangle
             this.window = new Form
             {
                 Text = "Vulkan",
-                ClientSize = new Size(SurfaceWidth, SurfaceHeight)
+                ClientSize = new System.Drawing.Size(SurfaceWidth, SurfaceHeight)
             };
 
             this.window.ClientSizeChanged += (x, y) => this.RecreateSwapChain();
@@ -402,7 +401,7 @@ namespace SharpVk.HelloTriangle
             var vertShader = device.CreateShaderModule(new ShaderModuleCreateInfo
             {
                 Code = vertShaderData,
-                CodeSize = (UIntPtr)codeSize
+                CodeSize = codeSize
             });
 
             var fragShaderData = LoadShaderData(@".\Shaders\frag.spv", out codeSize);
@@ -410,7 +409,7 @@ namespace SharpVk.HelloTriangle
             var fragShader = device.CreateShaderModule(new ShaderModuleCreateInfo
             {
                 Code = fragShaderData,
-                CodeSize = (UIntPtr)codeSize
+                CodeSize = codeSize
             });
 
             this.pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutCreateInfo());

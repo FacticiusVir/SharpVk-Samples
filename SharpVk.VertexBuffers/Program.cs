@@ -21,9 +21,10 @@
 //SOFTWARE.
 
 using GlmSharp;
+using SharpVk.Shanq;
+using SharpVk.Spirv;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -85,7 +86,7 @@ namespace SharpVk.VertexBuffers
             this.window = new Form
             {
                 Text = "Vulkan",
-                ClientSize = new Size(SurfaceWidth, SurfaceHeight)
+                ClientSize = new System.Drawing.Size(SurfaceWidth, SurfaceHeight)
             };
 
             this.window.ClientSizeChanged += (x, y) => this.RecreateSwapChain();
@@ -413,22 +414,20 @@ namespace SharpVk.VertexBuffers
 
         private void CreateGraphicsPipeline()
         {
-            int codeSize;
-            var vertShaderData = LoadShaderData(@".\Shaders\vert.spv", out codeSize);
+            var vertShader = ShanqShader<Vertex>.CreateVertexModule(this.device,
+                                                                        vertexInput => from input in vertexInput
+                                                                                       select new VertexOutput
+                                                                                       {
+                                                                                           Colour = input.Colour,
+                                                                                           Position = new vec4(input.Position, 0, 1)
+                                                                                       });
 
-            var vertShader = device.CreateShaderModule(new ShaderModuleCreateInfo
-            {
-                Code = vertShaderData,
-                CodeSize = (UIntPtr)codeSize
-            });
-
-            var fragShaderData = LoadShaderData(@".\Shaders\frag.spv", out codeSize);
-
-            var fragShader = device.CreateShaderModule(new ShaderModuleCreateInfo
-            {
-                Code = fragShaderData,
-                CodeSize = (UIntPtr)codeSize
-            });
+            var fragShader = ShanqShader<FragmentInput>.CreateFragmentModule(this.device,
+                                                                                fragmentInput => from input in fragmentInput
+                                                                                                 select new FragmentOutput
+                                                                                                 {
+                                                                                                     Colour = new vec4(input.Colour, 1)
+                                                                                                 });
 
             var bindingDescription = Vertex.GetBindingDescription();
             var attributeDescriptions = Vertex.GetAttributeDescriptions();
@@ -798,6 +797,27 @@ namespace SharpVk.VertexBuffers
             public PresentMode[] PresentModes;
         }
 
+        private struct VertexOutput
+        {
+            [Location(0)]
+            public vec3 Colour;
+
+            [BuiltIn(BuiltIn.Position)]
+            public vec4 Position;
+        }
+
+        private struct FragmentInput
+        {
+            [Location(0)]
+            public vec3 Colour;
+        }
+
+        private struct FragmentOutput
+        {
+            [Location(0)]
+            public vec4 Colour;
+        }
+
         private struct Vertex
         {
             public Vertex(vec2 position, vec3 colour)
@@ -806,7 +826,10 @@ namespace SharpVk.VertexBuffers
                 this.Colour = colour;
             }
 
+            [Location(0)]
             public vec2 Position;
+
+            [Location(1)]
             public vec3 Colour;
 
             public static VertexInputBindingDescription GetBindingDescription()
