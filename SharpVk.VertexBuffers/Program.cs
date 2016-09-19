@@ -25,6 +25,7 @@ using SharpVk.Shanq;
 using SharpVk.Spirv;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -37,12 +38,15 @@ namespace SharpVk.VertexBuffers
         private const int SurfaceWidth = 800;
         private const int SurfaceHeight = 600;
 
-        private readonly Vertex[] vertices = new[]
+        private readonly Vertex[] vertices =
         {
-            new Vertex(new vec2(0.0f, -0.5f), new vec3(1.0f, 0.0f, 0.0f)),
-            new Vertex(new vec2(0.5f, 0.5f), new vec3(0.0f, 1.0f, 0.0f)),
-            new Vertex(new vec2(-0.5f, 0.5f), new vec3(0.0f, 0.0f, 1.0f))
+            new Vertex(new vec2(-0.5f, -0.5f), new vec3(1.0f, 0.0f, 0.0f)),
+            new Vertex(new vec2(0.5f, -0.5f), new vec3(0.0f, 1.0f, 0.0f)),
+            new Vertex(new vec2(0.5f, 0.5f), new vec3(0.0f, 0.0f, 1.0f)),
+            new Vertex(new vec2(-0.5f, 0.5f), new vec3(1.0f, 1.0f, 1.0f))
         };
+
+        private readonly ushort[] indices = { 0, 1, 2, 2, 3, 0 };
 
         private Form window;
         private Instance instance;
@@ -51,6 +55,7 @@ namespace SharpVk.VertexBuffers
         private Device device;
         private Queue graphicsQueue;
         private Queue presentQueue;
+        private Queue transferQueue;
         private Swapchain swapChain;
         private Image[] swapChainImages;
         private ImageView[] swapChainImageViews;
@@ -58,9 +63,12 @@ namespace SharpVk.VertexBuffers
         private PipelineLayout pipelineLayout;
         private Pipeline pipeline;
         private Framebuffer[] frameBuffers;
+        private CommandPool transientCommandPool;
         private CommandPool commandPool;
         private Buffer vertexBuffer;
         private DeviceMemory vertexBufferMemory;
+        private Buffer indexBuffer;
+        private DeviceMemory indexBufferMemory;
         private CommandBuffer[] commandBuffers;
         private Semaphore imageAvailableSemaphore;
         private Semaphore renderFinishedSemaphore;
@@ -103,8 +111,9 @@ namespace SharpVk.VertexBuffers
             this.CreateRenderPass();
             this.CreateGraphicsPipeline();
             this.CreateFrameBuffers();
-            this.CreateCommandPool();
+            this.CreateCommandPools();
             this.CreateVertexBuffers();
+            this.CreateIndexBuffer();
             this.CreateCommandBuffers();
             this.CreateSemaphores();
         }
@@ -201,13 +210,13 @@ namespace SharpVk.VertexBuffers
             this.swapChain = null;
 
             this.device.Dispose();
-            this.renderFinishedSemaphore = null;
+            this.device = null;
 
             this.surface.Dispose();
-            this.renderFinishedSemaphore = null;
+            this.surface = null;
 
             this.instance.Dispose();
-            this.renderFinishedSemaphore = null;
+            this.instance = null;
         }
 
         private void DrawFrame()
@@ -236,21 +245,46 @@ namespace SharpVk.VertexBuffers
 
         private void CreateInstance()
         {
+            var enabledLayers = new List<string>();
+
+            if (Instance.EnumerateLayerProperties().Any(x => x.LayerName == "VK_LAYER_LUNARG_standard_validation"))
+            {
+                enabledLayers.Add("VK_LAYER_LUNARG_standard_validation");
+            }
+
             this.instance = Instance.Create(new InstanceCreateInfo
             {
                 ApplicationInfo = new ApplicationInfo
                 {
                     ApplicationName = "Vertex Buffers",
-                    ApplicationVersion = new Version(1, 0, 0),
+                    ApplicationVersion = Constants.SharpVkVersion,
                     EngineName = "SharpVk",
-                    EngineVersion = new Version(0, 2, 2)
+                    EngineVersion = Constants.SharpVkVersion,
+                    ApiVersion = Constants.ApiVersion10
                 },
                 EnabledExtensionNames = new[]
                 {
                     KhrSurface.ExtensionName,
-                    KhrWin32Surface.ExtensionName
-                }
+                    KhrWin32Surface.ExtensionName,
+                    ExtDebugReport.ExtensionName
+                },
+                EnabledLayerNames = enabledLayers.ToArray()
+            }, null);
+
+            this.instance.CreateDebugReportCallback(new DebugReportCallbackCreateInfo
+            {
+                Flags = DebugReportFlags.Error | DebugReportFlags.Warning | DebugReportFlags.Information | DebugReportFlags.Debug,
+                PfnCallback = DebugReportDelegate
             });
+        }
+
+        private static readonly Interop.DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
+
+        private static Bool32 DebugReport(DebugReportFlags flags, DebugReportObjectType objectType, ulong @object, Size location, int messageCode, string layerPrefix, string message, IntPtr userData)
+        {
+            Debug.WriteLine(message);
+
+            return false;
         }
 
         private void CreateSurface()
@@ -285,6 +319,7 @@ namespace SharpVk.VertexBuffers
 
             this.graphicsQueue = this.device.GetQueue(queueFamilies.GraphicsFamily.Value, 0);
             this.presentQueue = this.device.GetQueue(queueFamilies.PresentFamily.Value, 0);
+            this.transferQueue = this.device.GetQueue(queueFamilies.TransferFamily.Value, 0);
         }
 
         private void CreateSwapChain()
@@ -403,10 +438,10 @@ namespace SharpVk.VertexBuffers
                         {
                             SourceSubpass = 0,
                             DestinationSubpass = Constants.SubpassExternal,
-                            SourceStageMask = PipelineStageFlags.BottomOfPipe,
-                            SourceAccessMask = AccessFlags.MemoryRead,
-                            DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
+                            SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                            SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
+                            DestinationStageMask = PipelineStageFlags.BottomOfPipe,
+                            DestinationAccessMask = AccessFlags.MemoryRead
                         }
                     }
             });
@@ -544,9 +579,15 @@ namespace SharpVk.VertexBuffers
             })).ToArray();
         }
 
-        private void CreateCommandPool()
+        private void CreateCommandPools()
         {
             QueueFamilyIndices queueFamilies = FindQueueFamilies(this.physicalDevice);
+
+            this.transientCommandPool = device.CreateCommandPool(new CommandPoolCreateInfo
+            {
+                Flags = CommandPoolCreateFlags.Transient,
+                QueueFamilyIndex = queueFamilies.TransferFamily.Value
+            });
 
             this.commandPool = device.CreateCommandPool(new CommandPoolCreateInfo
             {
@@ -556,31 +597,48 @@ namespace SharpVk.VertexBuffers
 
         private void CreateVertexBuffers()
         {
-            this.vertexBuffer = this.device.CreateBuffer(new BufferCreateInfo
-            {
-                Size = (ulong)(Marshal.SizeOf<Vertex>() * vertices.Length),
-                Usage = BufferUsageFlags.VertexBuffer,
-                SharingMode = SharingMode.Exclusive
-            });
+            uint bufferSize = MemUtil.SizeOf<Vertex>() * (uint)vertices.Length;
+            Buffer stagingBuffer;
+            DeviceMemory stagingBufferMemory;
 
-            var memoryRequirements = this.vertexBuffer.GetMemoryRequirements();
-
-            uint memoryTypeIndex = this.FindMemoryType(memoryRequirements.MemoryTypeBits, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent);
-
-            this.vertexBufferMemory = this.device.AllocateMemory(new MemoryAllocateInfo
-            {
-                AllocationSize = memoryRequirements.Size,
-                MemoryTypeIndex = memoryTypeIndex
-            });
-
-            this.vertexBuffer.BindMemory(this.vertexBufferMemory, 0);
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBuffer, out stagingBufferMemory);
 
             IntPtr memoryBuffer = IntPtr.Zero;
-            this.vertexBufferMemory.MapMemory(0, memoryRequirements.Size, MemoryMapFlags.None, ref memoryBuffer);
+            stagingBufferMemory.MapMemory(0, bufferSize, MemoryMapFlags.None, ref memoryBuffer);
 
-            BufferCopy(vertices, 0, memoryBuffer, vertices.Length);
+            MemUtil.WriteToPtr(memoryBuffer, vertices, 0, vertices.Length);
 
-            this.vertexBufferMemory.UnmapMemory();
+            stagingBufferMemory.UnmapMemory();
+
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal, out this.vertexBuffer, out this.vertexBufferMemory);
+
+            this.CopyBuffer(stagingBuffer, this.vertexBuffer, bufferSize);
+
+            stagingBuffer.Dispose();
+            this.device.FreeMemory(stagingBufferMemory);
+        }
+
+        private void CreateIndexBuffer()
+        {
+            ulong bufferSize = MemUtil.SizeOf<ushort>() * (uint)this.indices.Length;
+            Buffer stagingBuffer;
+            DeviceMemory stagingBufferMemory;
+
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBuffer, out stagingBufferMemory);
+
+            IntPtr memoryBuffer = IntPtr.Zero;
+            stagingBufferMemory.MapMemory(0, bufferSize, MemoryMapFlags.None, ref memoryBuffer);
+
+            MemUtil.WriteToPtr(memoryBuffer, indices, 0, indices.Length);
+
+            stagingBufferMemory.UnmapMemory();
+
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.IndexBuffer, MemoryPropertyFlags.DeviceLocal, out this.indexBuffer, out this.indexBufferMemory);
+
+            this.CopyBuffer(stagingBuffer, this.indexBuffer, bufferSize);
+
+            stagingBuffer.Dispose();
+            this.device.FreeMemory(stagingBufferMemory);
         }
 
         private void CreateCommandBuffers()
@@ -622,7 +680,9 @@ namespace SharpVk.VertexBuffers
 
                 commandBuffer.BindVertexBuffers(0, new[] { this.vertexBuffer }, new DeviceSize[] { 0 });
 
-                commandBuffer.Draw((uint)this.vertices.Length, 1, 0, 0);
+                commandBuffer.BindIndexBuffer(this.indexBuffer, 0, IndexType.UInt16);
+
+                commandBuffer.DrawIndexed((uint)this.indices.Length, 1, 0, 0, 0);
 
                 commandBuffer.EndRenderPass();
 
@@ -669,6 +729,16 @@ namespace SharpVk.VertexBuffers
                 {
                     indices.PresentFamily = index;
                 }
+
+                if (queueFamilies[index].QueueFlags.HasFlag(QueueFlags.Transfer) && !queueFamilies[index].QueueFlags.HasFlag(QueueFlags.Graphics))
+                {
+                    indices.TransferFamily = index;
+                }
+            }
+
+            if (!indices.TransferFamily.HasValue)
+            {
+                indices.TransferFamily = indices.GraphicsFamily;
             }
 
             return indices;
@@ -680,14 +750,14 @@ namespace SharpVk.VertexBuffers
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8g8r8a8Unorm,
+                    Format = Format.B8G8R8A8UNorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
@@ -735,18 +805,6 @@ namespace SharpVk.VertexBuffers
                     && FindQueueFamilies(device).IsComplete;
         }
 
-        private static void BufferCopy<T>(T[] data, int startIndex, IntPtr pointer, int count)
-        {
-            int datumSize = Marshal.SizeOf<T>();
-
-            for (int index = startIndex; index < startIndex + count; index++)
-            {
-                Marshal.StructureToPtr(data[index], pointer, false);
-
-                pointer += datumSize;
-            }
-        }
-
         private static uint[] LoadShaderData(string filePath, out int codeSize)
         {
             var fileBytes = File.ReadAllBytes(filePath);
@@ -759,10 +817,55 @@ namespace SharpVk.VertexBuffers
             return shaderData;
         }
 
+        private void CreateBuffer(ulong size, BufferUsageFlags usage, MemoryPropertyFlags properties, out Buffer buffer, out DeviceMemory bufferMemory)
+        {
+            buffer = device.CreateBuffer(new BufferCreateInfo
+            {
+                Size = size,
+                Usage = usage,
+                SharingMode = SharingMode.Exclusive
+            });
+
+            var memRequirements = buffer.GetMemoryRequirements();
+
+            bufferMemory = device.AllocateMemory(new MemoryAllocateInfo
+            {
+                AllocationSize = memRequirements.Size,
+                MemoryTypeIndex = FindMemoryType(memRequirements.MemoryTypeBits, properties)
+            });
+
+            buffer.BindMemory(bufferMemory, 0);
+        }
+
+        private void CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size)
+        {
+            var transferBuffers = device.AllocateCommandBuffers(new CommandBufferAllocateInfo
+            {
+                Level = CommandBufferLevel.Primary,
+                CommandPool = this.transientCommandPool,
+                CommandBufferCount = 1
+            });
+
+            transferBuffers[0].Begin(new CommandBufferBeginInfo
+            {
+                Flags = CommandBufferUsageFlags.OneTimeSubmit
+            });
+
+            transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new[] { new BufferCopy { Size = size } });
+
+            transferBuffers[0].End();
+
+            this.transferQueue.Submit(new[] { new SubmitInfo { CommandBuffers = transferBuffers } }, null);
+            this.transferQueue.WaitIdle();
+
+            this.transientCommandPool.FreeCommandBuffers(transferBuffers);
+        }
+
         private struct QueueFamilyIndices
         {
             public uint? GraphicsFamily;
             public uint? PresentFamily;
+            public uint? TransferFamily;
 
             public IEnumerable<uint> Indices
             {
@@ -777,6 +880,11 @@ namespace SharpVk.VertexBuffers
                     {
                         yield return this.PresentFamily.Value;
                     }
+
+                    if (this.TransferFamily.HasValue && this.TransferFamily != this.PresentFamily && this.TransferFamily != this.GraphicsFamily)
+                    {
+                        yield return this.TransferFamily.Value;
+                    }
                 }
             }
 
@@ -785,7 +893,8 @@ namespace SharpVk.VertexBuffers
                 get
                 {
                     return this.GraphicsFamily.HasValue
-                        && this.PresentFamily.HasValue;
+                        && this.PresentFamily.HasValue
+                        && this.TransferFamily.HasValue;
                 }
             }
         }
@@ -850,14 +959,14 @@ namespace SharpVk.VertexBuffers
                     {
                         Binding = 0,
                         Location = 0,
-                        Format = Format.R32g32Sfloat,
+                        Format = Format.R32G32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Position")
                     },
                     new VertexInputAttributeDescription
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32g32b32Sfloat,
+                        Format = Format.R32G32B32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Colour")
                     }
                 };

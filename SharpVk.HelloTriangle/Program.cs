@@ -384,10 +384,10 @@ namespace SharpVk.HelloTriangle
                         {
                             SourceSubpass = 0,
                             DestinationSubpass = Constants.SubpassExternal,
-                            SourceStageMask = PipelineStageFlags.BottomOfPipe,
-                            SourceAccessMask = AccessFlags.MemoryRead,
-                            DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
+                            SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                            SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
+                            DestinationStageMask = PipelineStageFlags.BottomOfPipe,
+                            DestinationAccessMask = AccessFlags.MemoryRead
                         }
                     }
             });
@@ -607,14 +607,14 @@ namespace SharpVk.HelloTriangle
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8g8r8a8Unorm,
+                    Format = Format.B8G8R8A8UNorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
