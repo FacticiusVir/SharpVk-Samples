@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{79F91D9E-9C81-4083-A91A-1702F04F8900}</ProjectGuid>
+    <ProjectGuid>{AF6268C2-B903-4032-A5A1-854EED1E16F4}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>SharpVk.VertexBuffers</RootNamespace>

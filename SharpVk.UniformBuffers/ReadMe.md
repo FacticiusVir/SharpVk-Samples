@@ -1,0 +1,1 @@
+﻿This example is a port of the Uniform Buffers tutorial at https://vulkan-tutorial.com/Uniform_buffers

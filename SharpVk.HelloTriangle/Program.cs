@@ -559,7 +559,7 @@ namespace SharpVk.HelloTriangle
                     },
                     ClearValues = new ClearValue[]
                     {
-                        (ClearColorValue)new vec4(0, 0, 0, 1)
+                        new ClearColorValue(0f, 0f, 0f, 1f)
                     }
                 }, SubpassContents.Inline);
 
