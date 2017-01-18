@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpVk.VertexBuffers", "Sh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpVk.UniformBuffers", "SharpVk.UniformBuffers\SharpVk.UniformBuffers.csproj", "{AF6268C2-B903-4032-A5A1-854EED1E16F4}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SaschaWillems", "SaschaWillems", "{02BDA72F-DAD0-4184-9204-3365FB1AE23C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpVk.SaschaWillems.TextOverlay", "SharpVk.SaschaWillems.TextOverlay\SharpVk.SaschaWillems.TextOverlay.csproj", "{7D22B660-52D1-47A8-9349-D4D3D5038114}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpVk.SaschaWillems.Base", "SharpVk.SaschaWillems.Base\SharpVk.SaschaWillems.Base.csproj", "{6104A77F-C2A1-4E20-83CF-F15C2E5221C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +33,20 @@ Global
 		{AF6268C2-B903-4032-A5A1-854EED1E16F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AF6268C2-B903-4032-A5A1-854EED1E16F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AF6268C2-B903-4032-A5A1-854EED1E16F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D22B660-52D1-47A8-9349-D4D3D5038114}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D22B660-52D1-47A8-9349-D4D3D5038114}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D22B660-52D1-47A8-9349-D4D3D5038114}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D22B660-52D1-47A8-9349-D4D3D5038114}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6104A77F-C2A1-4E20-83CF-F15C2E5221C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6104A77F-C2A1-4E20-83CF-F15C2E5221C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6104A77F-C2A1-4E20-83CF-F15C2E5221C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6104A77F-C2A1-4E20-83CF-F15C2E5221C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7D22B660-52D1-47A8-9349-D4D3D5038114} = {02BDA72F-DAD0-4184-9204-3365FB1AE23C}
+		{6104A77F-C2A1-4E20-83CF-F15C2E5221C4} = {02BDA72F-DAD0-4184-9204-3365FB1AE23C}
 	EndGlobalSection
 EndGlobal
