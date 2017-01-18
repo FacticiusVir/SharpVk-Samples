@@ -280,7 +280,7 @@ namespace SharpVk.UniformBuffers
             IntPtr memoryBuffer = IntPtr.Zero;
             this.uniformStagingBufferMemory.MapMemory(0, uboSize, MemoryMapFlags.None, ref memoryBuffer);
 
-            MemUtil.WriteToPtr(memoryBuffer, ubo);
+            Marshal.StructureToPtr(ubo, memoryBuffer, false);
 
             this.uniformStagingBufferMemory.UnmapMemory();
 
@@ -291,15 +291,12 @@ namespace SharpVk.UniformBuffers
         {
             uint nextImage = this.swapChain.AcquireNextImage(uint.MaxValue, this.imageAvailableSemaphore, null);
 
-            this.graphicsQueue.Submit(new SubmitInfo[]
+            this.graphicsQueue.Submit(new SubmitInfo
             {
-                new SubmitInfo
-                {
-                    CommandBuffers = new [] { this.commandBuffers[nextImage] },
-                    SignalSemaphores = new [] { this.renderFinishedSemaphore },
-                    WaitDestinationStageMask = new [] { PipelineStageFlags.ColorAttachmentOutput },
-                    WaitSemaphores = new [] { this.imageAvailableSemaphore }
-                }
+                CommandBuffers = new [] { this.commandBuffers[nextImage] },
+                SignalSemaphores = new [] { this.renderFinishedSemaphore },
+                WaitDestinationStageMask = new [] { PipelineStageFlags.ColorAttachmentOutput },
+                WaitSemaphores = new [] { this.imageAvailableSemaphore }
             }, null);
 
             this.presentQueue.Present(new PresentInfo

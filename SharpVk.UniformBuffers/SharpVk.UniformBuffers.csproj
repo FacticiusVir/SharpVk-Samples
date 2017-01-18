@@ -41,8 +41,8 @@
       <HintPath>..\packages\Remotion.Linq.2.0.2\lib\net45\Remotion.Linq.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="SharpVk, Version=0.3.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVk.0.3.2\lib\net46\SharpVk.dll</HintPath>
+    <Reference Include="SharpVk, Version=0.3.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpVk.0.3.3-dev2\lib\portable45-net45+win8+wpa81\SharpVk.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpVk.Shanq, Version=0.3.2.0, Culture=neutral, processorArchitecture=MSIL">
