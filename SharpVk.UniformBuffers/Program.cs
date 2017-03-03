@@ -63,6 +63,8 @@ namespace SharpVk.UniformBuffers
         private DescriptorSetLayout descriptorSetLayout;
         private PipelineLayout pipelineLayout;
         private Pipeline pipeline;
+        private ShaderModule fragShader;
+        private ShaderModule vertShader;
         private Framebuffer[] frameBuffers;
         private CommandPool transientCommandPool;
         private CommandPool commandPool;
@@ -118,6 +120,7 @@ namespace SharpVk.UniformBuffers
             this.CreateImageViews();
             this.CreateRenderPass();
             this.CreateDescriptorSetLayout();
+            this.CreateShaderModules();
             this.CreateGraphicsPipeline();
             this.CreateFrameBuffers();
             this.CreateCommandPools();
@@ -230,6 +233,12 @@ namespace SharpVk.UniformBuffers
                 frameBuffer.Dispose();
             }
             this.frameBuffers = null;
+
+            this.fragShader.Dispose();
+            this.fragShader = null;
+
+            this.vertShader.Dispose();
+            this.vertShader = null;
 
             this.pipeline.Dispose();
             this.pipeline = null;
@@ -532,27 +541,28 @@ namespace SharpVk.UniformBuffers
             });
         }
 
+        private void CreateShaderModules()
+        {
+            vertShader = ShanqShader.CreateVertexModule(this.device,
+                                                            shanq => from input in shanq.GetInput<Vertex>()
+                                                                     from ubo in shanq.GetBinding<UniformBufferObject>()
+                                                                     let transform = ubo.Proj * ubo.View * ubo.Model
+                                                                     select new VertexOutput {
+                                                                         Position = transform * new vec4(input.Position, 0, 1),
+                                                                         Colour = input.Colour
+                                                                     });
+
+            fragShader = ShanqShader.CreateFragmentModule(this.device,
+                                                            shanq => from input in shanq.GetInput<FragmentInput>()
+                                                                     from ubo in shanq.GetBinding<UniformBufferObject>()
+                                                                     let colour = new vec4(input.Colour, 1)
+                                                                     select new FragmentOutput {
+                                                                         Colour = colour
+                                                                     });
+        }
+
         private void CreateGraphicsPipeline()
         {
-            var vertShader = ShanqShader.CreateVertexModule(this.device,
-                                shanq => from input in shanq.GetInput<Vertex>()
-                                         from ubo in shanq.GetBinding<UniformBufferObject>()
-                                         let transform = ubo.Proj * ubo.View * ubo.Model
-                                         select new VertexOutput
-                                         {
-                                             Position = transform * new vec4(input.Position, 0, 1),
-                                             Colour = input.Colour
-                                         });
-
-            var fragShader = ShanqShader.CreateFragmentModule(this.device,
-                                                                shanq => from input in shanq.GetInput<FragmentInput>()
-                                                                         from ubo in shanq.GetBinding<UniformBufferObject>()
-                                                                         let colour = new vec4(input.Colour, 1)
-                                                                         select new FragmentOutput
-                                                                         {
-                                                                             Colour = colour
-                                                                         });
-
             var bindingDescription = Vertex.GetBindingDescription();
             var attributeDescriptions = Vertex.GetAttributeDescriptions();
 
@@ -660,8 +670,6 @@ namespace SharpVk.UniformBuffers
                         }
                     }
                 }).Single();
-            fragShader.Dispose();
-            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()
