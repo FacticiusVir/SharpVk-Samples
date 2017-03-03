@@ -507,13 +507,13 @@ namespace SharpVk.HelloTriangle
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Vertex,
-                                Module = vertShader,
+                                Module = this.vertShader,
                                 Name = "main"
                             },
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Fragment,
-                                Module = fragShader,
+                                Module = this.fragShader,
                                 Name = "main"
                             }
                         }
