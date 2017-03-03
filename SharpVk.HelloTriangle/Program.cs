@@ -47,6 +47,8 @@ namespace SharpVk.HelloTriangle
         private RenderPass renderPass;
         private PipelineLayout pipelineLayout;
         private Pipeline pipeline;
+        private ShaderModule fragShader;
+        private ShaderModule vertShader;
         private Framebuffer[] frameBuffers;
         private CommandPool commandPool;
         private CommandBuffer[] commandBuffers;
@@ -89,6 +91,7 @@ namespace SharpVk.HelloTriangle
             this.CreateSwapChain();
             this.CreateImageViews();
             this.CreateRenderPass();
+            this.CreateShaderModules();
             this.CreateGraphicsPipeline();
             this.CreateFrameBuffers();
             this.CreateCommandPool();
@@ -164,6 +167,12 @@ namespace SharpVk.HelloTriangle
                 frameBuffer.Dispose();
             }
             this.frameBuffers = null;
+
+            this.fragShader.Dispose();
+            this.fragShader = null;
+
+            this.vertShader.Dispose();
+            this.vertShader = null;
 
             this.pipeline.Dispose();
             this.pipeline = null;
@@ -395,25 +404,27 @@ namespace SharpVk.HelloTriangle
             });
         }
 
-        private void CreateGraphicsPipeline()
+
+        private void CreateShaderModules()
         {
             int codeSize;
             var vertShaderData = LoadShaderData(@".\Shaders\vert.spv", out codeSize);
 
-            var vertShader = device.CreateShaderModule(new ShaderModuleCreateInfo
-            {
+            this.vertShader = device.CreateShaderModule(new ShaderModuleCreateInfo {
                 Code = vertShaderData,
                 CodeSize = codeSize
             });
 
             var fragShaderData = LoadShaderData(@".\Shaders\frag.spv", out codeSize);
 
-            var fragShader = device.CreateShaderModule(new ShaderModuleCreateInfo
-            {
+            this.fragShader = device.CreateShaderModule(new ShaderModuleCreateInfo {
                 Code = fragShaderData,
                 CodeSize = codeSize
             });
+        }
 
+        private void CreateGraphicsPipeline()
+        {
             this.pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutCreateInfo());
 
             this.pipeline = device.CreateGraphicsPipelines(null, new[]
@@ -508,8 +519,6 @@ namespace SharpVk.HelloTriangle
                         }
                     }
                 }).Single();
-            fragShader.Dispose();
-            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()

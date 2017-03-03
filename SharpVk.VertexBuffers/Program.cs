@@ -62,6 +62,8 @@ namespace SharpVk.VertexBuffers
         private RenderPass renderPass;
         private PipelineLayout pipelineLayout;
         private Pipeline pipeline;
+        private ShaderModule fragShader;
+        private ShaderModule vertShader;
         private Framebuffer[] frameBuffers;
         private CommandPool transientCommandPool;
         private CommandPool commandPool;
@@ -109,6 +111,7 @@ namespace SharpVk.VertexBuffers
             this.CreateSwapChain();
             this.CreateImageViews();
             this.CreateRenderPass();
+            this.CreateShaderModules();
             this.CreateGraphicsPipeline();
             this.CreateFrameBuffers();
             this.CreateCommandPools();
@@ -192,6 +195,12 @@ namespace SharpVk.VertexBuffers
                 frameBuffer.Dispose();
             }
             this.frameBuffers = null;
+
+            this.fragShader.Dispose();
+            this.fragShader = null;
+
+            this.vertShader.Dispose();
+            this.vertShader = null;
 
             this.pipeline.Dispose();
             this.pipeline = null;
@@ -449,23 +458,24 @@ namespace SharpVk.VertexBuffers
             });
         }
 
+        private void CreateShaderModules()
+        {
+            vertShader = ShanqShader.CreateVertexModule(this.device,
+                                                            shanq => from input in shanq.GetInput<Vertex>()
+                                                                     select new VertexOutput {
+                                                                         Colour = input.Colour,
+                                                                         Position = new vec4(input.Position, 0, 1)
+                                                                     });
+
+            fragShader = ShanqShader.CreateFragmentModule(this.device,
+                                                            shanq => from input in shanq.GetInput<FragmentInput>()
+                                                                     select new FragmentOutput {
+                                                                         Colour = new vec4(input.Colour, 1)
+                                                                     });
+        }
+
         private void CreateGraphicsPipeline()
         {
-            var vertShader = ShanqShader.CreateVertexModule(this.device,
-                                                            shanq => from input in shanq.GetInput<Vertex>()
-                                                                        select new VertexOutput
-                                                                        {
-                                                                            Colour = input.Colour,
-                                                                            Position = new vec4(input.Position, 0, 1)
-                                                                        });
-
-            var fragShader = ShanqShader.CreateFragmentModule(this.device,
-                                                                shanq => from input in shanq.GetInput<FragmentInput>()
-                                                                            select new FragmentOutput
-                                                                            {
-                                                                                Colour = new vec4(input.Colour, 1)
-                                                                            });
-
             var bindingDescription = Vertex.GetBindingDescription();
             var attributeDescriptions = Vertex.GetAttributeDescriptions();
 
@@ -567,8 +577,6 @@ namespace SharpVk.VertexBuffers
                         }
                     }
                 }).Single();
-            fragShader.Dispose();
-            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()
