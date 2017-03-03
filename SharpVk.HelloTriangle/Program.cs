@@ -112,7 +112,7 @@ namespace SharpVk.HelloTriangle
         {
             this.device.WaitIdle();
 
-            commandPool.FreeCommandBuffers(commandBuffers);
+            this.commandPool.FreeCommandBuffers(commandBuffers);
 
             foreach (var frameBuffer in this.frameBuffers)
             {
