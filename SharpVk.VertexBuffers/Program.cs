@@ -460,14 +460,14 @@ namespace SharpVk.VertexBuffers
 
         private void CreateShaderModules()
         {
-            vertShader = ShanqShader.CreateVertexModule(this.device,
+            this.vertShader = ShanqShader.CreateVertexModule(this.device,
                                                             shanq => from input in shanq.GetInput<Vertex>()
                                                                      select new VertexOutput {
                                                                          Colour = input.Colour,
                                                                          Position = new vec4(input.Position, 0, 1)
                                                                      });
 
-            fragShader = ShanqShader.CreateFragmentModule(this.device,
+            this.fragShader = ShanqShader.CreateFragmentModule(this.device,
                                                             shanq => from input in shanq.GetInput<FragmentInput>()
                                                                      select new FragmentOutput {
                                                                          Colour = new vec4(input.Colour, 1)
@@ -565,13 +565,13 @@ namespace SharpVk.VertexBuffers
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Vertex,
-                                Module = vertShader,
+                                Module = this.vertShader,
                                 Name = "main"
                             },
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Fragment,
-                                Module = fragShader,
+                                Module = this.fragShader,
                                 Name = "main"
                             }
                         }

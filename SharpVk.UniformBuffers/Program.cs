@@ -543,7 +543,7 @@ namespace SharpVk.UniformBuffers
 
         private void CreateShaderModules()
         {
-            vertShader = ShanqShader.CreateVertexModule(this.device,
+            this.vertShader = ShanqShader.CreateVertexModule(this.device,
                                                             shanq => from input in shanq.GetInput<Vertex>()
                                                                      from ubo in shanq.GetBinding<UniformBufferObject>()
                                                                      let transform = ubo.Proj * ubo.View * ubo.Model
@@ -552,7 +552,7 @@ namespace SharpVk.UniformBuffers
                                                                          Colour = input.Colour
                                                                      });
 
-            fragShader = ShanqShader.CreateFragmentModule(this.device,
+            this.fragShader = ShanqShader.CreateFragmentModule(this.device,
                                                             shanq => from input in shanq.GetInput<FragmentInput>()
                                                                      from ubo in shanq.GetBinding<UniformBufferObject>()
                                                                      let colour = new vec4(input.Colour, 1)
@@ -658,13 +658,13 @@ namespace SharpVk.UniformBuffers
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Vertex,
-                                Module = vertShader,
+                                Module = this.vertShader,
                                 Name = "main"
                             },
                             new PipelineShaderStageCreateInfo
                             {
                                 Stage = ShaderStageFlags.Fragment,
-                                Module = fragShader,
+                                Module = this.fragShader,
                                 Name = "main"
                             }
                         }
