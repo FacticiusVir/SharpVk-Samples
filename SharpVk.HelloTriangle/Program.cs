@@ -506,6 +506,8 @@ namespace SharpVk.HelloTriangle
                         }
                     }
                 }).Single();
+            fragShader.Dispose();
+            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()

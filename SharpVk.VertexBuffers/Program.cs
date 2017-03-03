@@ -565,6 +565,8 @@ namespace SharpVk.VertexBuffers
                         }
                     }
                 }).Single();
+            fragShader.Dispose();
+            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()
