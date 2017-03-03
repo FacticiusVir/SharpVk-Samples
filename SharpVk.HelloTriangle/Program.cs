@@ -112,6 +112,8 @@ namespace SharpVk.HelloTriangle
         {
             this.device.WaitIdle();
 
+            commandPool.FreeCommandBuffers(commandBuffers);
+
             foreach (var frameBuffer in this.frameBuffers)
             {
                 frameBuffer.Dispose();
