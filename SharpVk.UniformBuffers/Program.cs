@@ -149,7 +149,7 @@ namespace SharpVk.UniformBuffers
         {
             this.device.WaitIdle();
 
-            commandPool.FreeCommandBuffers(commandBuffers);
+            this.commandPool.FreeCommandBuffers(commandBuffers);
 
             foreach (var frameBuffer in this.frameBuffers)
             {
