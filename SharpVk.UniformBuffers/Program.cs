@@ -658,6 +658,8 @@ namespace SharpVk.UniformBuffers
                         }
                     }
                 }).Single();
+            fragShader.Dispose();
+            vertShader.Dispose();
         }
 
         private void CreateFrameBuffers()
