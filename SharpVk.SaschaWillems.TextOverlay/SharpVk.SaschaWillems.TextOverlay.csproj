@@ -69,9 +69,8 @@
       <HintPath>..\packages\GlmSharp.0.9.8\lib\Net45\GlmSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="SharpVk, Version=0.3.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVk.0.3.3-dev2\lib\portable45-net45+win8+wpa81\SharpVk.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="SharpVk, Version=0.3.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpVk.0.3.4\lib\portable45-net45+win8+wpa81\SharpVk.dll</HintPath>
     </Reference>
     <Reference Include="System" />
   </ItemGroup>
