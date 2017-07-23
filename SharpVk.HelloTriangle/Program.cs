@@ -21,6 +21,7 @@
 //SOFTWARE.
 
 using GlmSharp;
+using SharpVk.Khronos;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -119,26 +120,26 @@ namespace SharpVk.HelloTriangle
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Dispose();
+                frameBuffer.Destroy();
             }
             this.frameBuffers = null;
 
-            this.pipeline.Dispose();
+            this.pipeline.Destroy();
             this.pipeline = null;
 
-            this.pipelineLayout.Dispose();
+            this.pipelineLayout.Destroy();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Dispose();
+                imageView.Destroy();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Dispose();
+            this.renderPass.Destroy();
             this.renderPass = null;
 
-            this.swapChain.Dispose();
+            this.swapChain.Destroy();
             this.swapChain = null;
 
             this.CreateSwapChain();
@@ -153,52 +154,52 @@ namespace SharpVk.HelloTriangle
         {
             device.WaitIdle();
 
-            this.renderFinishedSemaphore.Dispose();
+            this.renderFinishedSemaphore.Destroy();
             this.renderFinishedSemaphore = null;
 
-            this.imageAvailableSemaphore.Dispose();
+            this.imageAvailableSemaphore.Destroy();
             this.imageAvailableSemaphore = null;
 
-            this.commandPool.Dispose();
+            this.commandPool.Destroy();
             this.commandPool = null;
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Dispose();
+                frameBuffer.Destroy();
             }
             this.frameBuffers = null;
 
-            this.fragShader.Dispose();
+            this.fragShader.Destroy();
             this.fragShader = null;
 
-            this.vertShader.Dispose();
+            this.vertShader.Destroy();
             this.vertShader = null;
 
-            this.pipeline.Dispose();
+            this.pipeline.Destroy();
             this.pipeline = null;
 
-            this.pipelineLayout.Dispose();
+            this.pipelineLayout.Destroy();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Dispose();
+                imageView.Destroy();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Dispose();
+            this.renderPass.Destroy();
             this.renderPass = null;
 
-            this.swapChain.Dispose();
+            this.swapChain.Destroy();
             this.swapChain = null;
 
-            this.device.Dispose();
+            this.device.Destroy();
             this.device = null;
 
-            this.surface.Dispose();
+            this.surface.Destroy();
             this.surface = null;
 
-            this.instance.Dispose();
+            this.instance.Destroy();
             this.instance = null;
         }
 
@@ -217,40 +218,28 @@ namespace SharpVk.HelloTriangle
                 }
             }, null);
 
-            this.presentQueue.Present(new PresentInfo
-            {
-                ImageIndices = new uint[] { nextImage },
-                Results = new Result[1],
-                WaitSemaphores = new[] { this.renderFinishedSemaphore },
-                Swapchains = new[] { this.swapChain }
-            });
+            this.presentQueue.Present(new[] { this.renderFinishedSemaphore }, new[] { this.swapChain }, new uint[] { nextImage }, new Result[1]);
         }
 
         private void CreateInstance()
         {
-            this.instance = Instance.Create(new InstanceCreateInfo
-            {
-                ApplicationInfo = new ApplicationInfo
+            this.instance = Instance.Create(null, new[]
+                {
+                    "VK_KHR_surface",
+                    "VK_KHR_win32_surface"
+                },
+                applicationInfo: new ApplicationInfo
                 {
                     ApplicationName = "Hello Triangle",
                     ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
                     EngineVersion = new Version(0, 1, 1)
-                },
-                EnabledExtensionNames = new[]
-                {
-                    KhrSurface.ExtensionName,
-                    KhrWin32Surface.ExtensionName
-                }
-            }, null);
+                });
         }
 
         private void CreateSurface()
         {
-            this.surface = this.instance.CreateWin32Surface(new Win32SurfaceCreateInfo
-            {
-                Hwnd = this.window.Handle
-            });
+            this.surface = this.instance.CreateWin32Surface(IntPtr.Zero, this.window.Handle);
         }
 
         private void PickPhysicalDevice()
@@ -264,16 +253,14 @@ namespace SharpVk.HelloTriangle
         {
             QueueFamilyIndices queueFamilies = FindQueueFamilies(this.physicalDevice);
 
-            this.device = physicalDevice.CreateDevice(new DeviceCreateInfo
-            {
-                QueueCreateInfos = queueFamilies.Indices
-                                                .Select(index => new DeviceQueueCreateInfo
-                                                {
-                                                    QueueFamilyIndex = index,
-                                                    QueuePriorities = new[] { 1f }
-                                                }).ToArray(),
-                EnabledExtensionNames = new[] { KhrSwapchain.ExtensionName }
-            });
+            this.device = physicalDevice.CreateDevice(queueFamilies.Indices
+                                                                        .Select(index => new DeviceQueueCreateInfo
+                                                                        {
+                                                                            QueueFamilyIndex = index,
+                                                                            QueuePriorities = new[] { 1f }
+                                                                        }).ToArray(),
+                                                        null,
+                                                        new[] { "VK_KHR_swapchain" });
 
             this.graphicsQueue = this.device.GetQueue(queueFamilies.GraphicsFamily.Value, 0);
             this.presentQueue = this.device.GetQueue(queueFamilies.PresentFamily.Value, 0);
@@ -297,26 +284,22 @@ namespace SharpVk.HelloTriangle
 
             Extent2D extent = this.ChooseSwapExtent(swapChainSupport.Capabilities);
 
-            this.swapChain = device.CreateSwapchain(new SwapchainCreateInfo
-            {
-                Surface = surface,
-                Flags = SwapchainCreateFlags.None,
-                PresentMode = this.ChooseSwapPresentMode(swapChainSupport.PresentModes),
-                MinImageCount = imageCount,
-                ImageExtent = extent,
-                ImageUsage = ImageUsageFlags.ColorAttachment,
-                PreTransform = swapChainSupport.Capabilities.CurrentTransform,
-                ImageArrayLayers = 1,
-                ImageSharingMode = indices.Length == 1
-                                    ? SharingMode.Exclusive
-                                    : SharingMode.Concurrent,
-                QueueFamilyIndices = indices,
-                ImageFormat = surfaceFormat.Format,
-                ImageColorSpace = surfaceFormat.ColorSpace,
-                Clipped = true,
-                CompositeAlpha = CompositeAlphaFlags.Opaque,
-                OldSwapchain = this.swapChain
-            });
+            this.swapChain = device.CreateSwapchain(surface,
+                                                    imageCount,
+                                                    surfaceFormat.Format,
+                                                    surfaceFormat.ColorSpace,
+                                                    extent,
+                                                    1,
+                                                    ImageUsageFlags.ColorAttachment,
+                                                    indices.Length == 1
+                                                        ? SharingMode.Exclusive
+                                                        : SharingMode.Concurrent,
+                                                    indices,
+                                                    swapChainSupport.Capabilities.CurrentTransform,
+                                                    CompositeAlphaFlags.Opaque,
+                                                    this.ChooseSwapPresentMode(swapChainSupport.PresentModes),
+                                                    true,
+                                                    this.swapChain);
 
             this.swapChainImages = this.swapChain.GetImages();
             this.swapChainFormat = surfaceFormat.Format;
@@ -325,107 +308,98 @@ namespace SharpVk.HelloTriangle
 
         private void CreateImageViews()
         {
-            this.swapChainImageViews = this.swapChainImages.Select(image => device.CreateImageView(new ImageViewCreateInfo
-            {
-                Components = ComponentMapping.Identity,
-                Format = this.swapChainFormat,
-                Image = image,
-                Flags = ImageViewCreateFlags.None,
-                ViewType = ImageViewType.ImageView2d,
-                SubresourceRange = new ImageSubresourceRange
-                {
-                    AspectMask = ImageAspectFlags.Color,
-                    BaseMipLevel = 0,
-                    LevelCount = 1,
-                    BaseArrayLayer = 0,
-                    LayerCount = 1
-                }
-            })).ToArray();
+            this.swapChainImageViews = this.swapChainImages
+                                                .Select(image => device.CreateImageView(image,
+                                                                                        ImageViewType.ImageView2d,
+                                                                                        this.swapChainFormat,
+                                                                                        new ComponentMapping(),
+                                                                                        new ImageSubresourceRange
+                                                                                        {
+                                                                                            AspectMask = ImageAspectFlags.Color,
+                                                                                            BaseMipLevel = 0,
+                                                                                            LevelCount = 1,
+                                                                                            BaseArrayLayer = 0,
+                                                                                            LayerCount = 1
+                                                                                        }))
+                                                .ToArray();
         }
 
         private void CreateRenderPass()
         {
-            this.renderPass = device.CreateRenderPass(new RenderPassCreateInfo
-            {
-                Attachments = new[]
-                       {
-                        new AttachmentDescription
-                        {
-                            Format = this.swapChainFormat,
-                            Samples = SampleCountFlags.SampleCount1,
-                            LoadOp = AttachmentLoadOp.Clear,
-                            StoreOp = AttachmentStoreOp.Store,
-                            StencilLoadOp = AttachmentLoadOp.DontCare,
-                            StencilStoreOp = AttachmentStoreOp.DontCare,
-                            InitialLayout = ImageLayout.Undefined,
-                            FinalLayout = ImageLayout.PresentSource
-                        },
-                    },
-                Subpasses = new[]
-                       {
-                        new SubpassDescription
-                        {
-                            DepthStencilAttachment = new AttachmentReference
-                            {
-                                Attachment = Constants.AttachmentUnused
-                            },
-                            PipelineBindPoint = PipelineBindPoint.Graphics,
-                            ColorAttachments = new []
-                            {
-                                new AttachmentReference
-                                {
-                                    Attachment = 0,
-                                    Layout = ImageLayout.ColorAttachmentOptimal
-                                }
-                            }
-                        }
-                    },
-                Dependencies = new[]
-                       {
-                        new SubpassDependency
-                        {
-                            SourceSubpass = Constants.SubpassExternal,
-                            DestinationSubpass = 0,
-                            SourceStageMask = PipelineStageFlags.BottomOfPipe,
-                            SourceAccessMask = AccessFlags.MemoryRead,
-                            DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
-                        },
-                        new SubpassDependency
-                        {
-                            SourceSubpass = 0,
-                            DestinationSubpass = Constants.SubpassExternal,
-                            SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
-                            DestinationStageMask = PipelineStageFlags.BottomOfPipe,
-                            DestinationAccessMask = AccessFlags.MemoryRead
-                        }
-                    }
-            });
+            this.renderPass = device.CreateRenderPass(new[]
+                                                        {
+                                                            new AttachmentDescription
+                                                            {
+                                                                Format = this.swapChainFormat,
+                                                                Samples = SampleCountFlags.SampleCount1,
+                                                                LoadOp = AttachmentLoadOp.Clear,
+                                                                StoreOp = AttachmentStoreOp.Store,
+                                                                StencilLoadOp = AttachmentLoadOp.DontCare,
+                                                                StencilStoreOp = AttachmentStoreOp.DontCare,
+                                                                InitialLayout = ImageLayout.Undefined,
+                                                                FinalLayout = ImageLayout.PresentSourceKhr
+                                                            }
+                                                        },
+                                                        new[]
+                                                        {
+                                                            new SubpassDescription
+                                                            {
+                                                                DepthStencilAttachment = new AttachmentReference
+                                                                {
+                                                                    Attachment = Constants.AttachmentUnused
+                                                                },
+                                                                PipelineBindPoint = PipelineBindPoint.Graphics,
+                                                                ColorAttachments = new []
+                                                                {
+                                                                    new AttachmentReference
+                                                                    {
+                                                                        Attachment = 0,
+                                                                        Layout = ImageLayout.ColorAttachmentOptimal
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        new[]
+                                                        {
+                                                            new SubpassDependency
+                                                            {
+                                                                SourceSubpass = Constants.SubpassExternal,
+                                                                DestinationSubpass = 0,
+                                                                SourceStageMask = PipelineStageFlags.BottomOfPipe,
+                                                                SourceAccessMask = AccessFlags.MemoryRead,
+                                                                DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                                                                DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
+                                                            },
+                                                            new SubpassDependency
+                                                            {
+                                                                SourceSubpass = 0,
+                                                                DestinationSubpass = Constants.SubpassExternal,
+                                                                SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                                                                SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
+                                                                DestinationStageMask = PipelineStageFlags.BottomOfPipe,
+                                                                DestinationAccessMask = AccessFlags.MemoryRead
+                                                            }
+                                                        });
         }
 
 
         private void CreateShaderModules()
         {
-            int codeSize;
-            var vertShaderData = LoadShaderData(@".\Shaders\vert.spv", out codeSize);
+            ShaderModule CreateShader(string path)
+            {
+                var shaderData = LoadShaderData(path, out int codeSize);
 
-            this.vertShader = device.CreateShaderModule(new ShaderModuleCreateInfo {
-                Code = vertShaderData,
-                CodeSize = codeSize
-            });
-
-            var fragShaderData = LoadShaderData(@".\Shaders\frag.spv", out codeSize);
-
-            this.fragShader = device.CreateShaderModule(new ShaderModuleCreateInfo {
-                Code = fragShaderData,
-                CodeSize = codeSize
-            });
+                return device.CreateShaderModule(codeSize, shaderData);
+            }
+            
+            this.vertShader = CreateShader(@".\Shaders\vert.spv");
+            
+            this.fragShader = CreateShader(@".\Shaders\frag.spv");
         }
 
         private void CreateGraphicsPipeline()
         {
-            this.pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutCreateInfo());
+            this.pipelineLayout = device.CreatePipelineLayout(null, null);
 
             this.pipeline = device.CreateGraphicsPipelines(null, new[]
             {
@@ -458,7 +432,6 @@ namespace SharpVk.HelloTriangle
                             {
                                 new Rect2D
                                 {
-                                    Offset = new Offset2D(),
                                     Extent= this.swapChainExtent
                                 }
                             }
@@ -500,7 +473,7 @@ namespace SharpVk.HelloTriangle
                             },
                             LogicOpEnable = false,
                             LogicOp = LogicOp.Copy,
-                            BlendConstants = new float[] {0,0,0,0}
+                            BlendConstants = new float[4]
                         },
                         Stages = new[]
                         {
@@ -523,58 +496,40 @@ namespace SharpVk.HelloTriangle
 
         private void CreateFrameBuffers()
         {
-            this.frameBuffers = this.swapChainImageViews.Select(imageView => device.CreateFramebuffer(new FramebufferCreateInfo
-            {
-                RenderPass = renderPass,
-                Attachments = new[] { imageView },
-                Layers = 1,
-                Height = this.swapChainExtent.Height,
-                Width = this.swapChainExtent.Width
-            })).ToArray();
+            Framebuffer Create(ImageView imageView) => device.CreateFramebuffer(renderPass,
+                                                                                new[] { imageView },
+                                                                                this.swapChainExtent.Width,
+                                                                                this.swapChainExtent.Height,
+                                                                                1);
+
+            this.frameBuffers = this.swapChainImageViews.Select(Create).ToArray();
         }
 
         private void CreateCommandPool()
         {
             QueueFamilyIndices queueFamilies = FindQueueFamilies(this.physicalDevice);
 
-            this.commandPool = device.CreateCommandPool(new CommandPoolCreateInfo
-            {
-                QueueFamilyIndex = queueFamilies.GraphicsFamily.Value
-            });
+            this.commandPool = device.CreateCommandPool(queueFamilies.GraphicsFamily.Value);
         }
 
         private void CreateCommandBuffers()
         {
-            this.commandBuffers = device.AllocateCommandBuffers(new CommandBufferAllocateInfo
-            {
-                CommandBufferCount = (uint)this.frameBuffers.Length,
-                CommandPool = this.commandPool,
-                Level = CommandBufferLevel.Primary
-            });
+            this.commandBuffers = device.AllocateCommandBuffers(this.commandPool, CommandBufferLevel.Primary, (uint)this.frameBuffers.Length);
 
             for (int index = 0; index < this.frameBuffers.Length; index++)
             {
                 var commandBuffer = this.commandBuffers[index];
 
-                commandBuffer.Begin(new CommandBufferBeginInfo
-                {
-                    Flags = CommandBufferUsageFlags.SimultaneousUse
-                });
+                commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
 
-                commandBuffer.BeginRenderPass(new RenderPassBeginInfo
-                {
-                    RenderPass = this.renderPass,
-                    Framebuffer = this.frameBuffers[index],
-                    RenderArea = new Rect2D
-                    {
-                        Offset = new Offset2D(),
-                        Extent = this.swapChainExtent
-                    },
-                    ClearValues = new ClearValue[]
-                    {
-                        new ClearColorValue(0f, 0f, 0f, 1f)
-                    }
-                }, SubpassContents.Inline);
+                commandBuffer.BeginRenderPass(this.renderPass,
+                                                this.frameBuffers[index],
+                                                new Rect2D
+                                                {
+                                                    Extent = this.swapChainExtent
+                                                },
+                                                new ClearValue[1],
+                                                SubpassContents.Inline);
 
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, this.pipeline);
 
@@ -588,8 +543,8 @@ namespace SharpVk.HelloTriangle
 
         private void CreateSemaphores()
         {
-            this.imageAvailableSemaphore = device.CreateSemaphore(new SemaphoreCreateInfo());
-            this.renderFinishedSemaphore = device.CreateSemaphore(new SemaphoreCreateInfo());
+            this.imageAvailableSemaphore = device.CreateSemaphore();
+            this.renderFinishedSemaphore = device.CreateSemaphore();
         }
 
         private QueueFamilyIndices FindQueueFamilies(PhysicalDevice device)
@@ -620,14 +575,14 @@ namespace SharpVk.HelloTriangle
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8G8R8A8UNorm,
+                    Format = Format.B8g8r8a8Unorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
@@ -671,7 +626,7 @@ namespace SharpVk.HelloTriangle
 
         private bool IsSuitableDevice(PhysicalDevice device)
         {
-            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == KhrSwapchain.ExtensionName)
+            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == "VK_KHR_swapchain")
                     && FindQueueFamilies(device).IsComplete;
         }
 
