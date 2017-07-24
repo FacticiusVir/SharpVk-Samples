@@ -22,8 +22,10 @@
 
 using GlmSharp;
 using SharpVk.Khronos;
+using SharpVk.Multivendor;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -223,18 +225,48 @@ namespace SharpVk.HelloTriangle
 
         private void CreateInstance()
         {
-            this.instance = Instance.Create(null, new[]
+            var enabledLayers = new List<string>();
+
+            //VK_LAYER_LUNARG_api_dump
+            //VK_LAYER_LUNARG_standard_validation
+
+            void AddAvailableLayer(string layerName)
+            {
+                if (Instance.EnumerateLayerProperties().Any(x => x.LayerName == layerName))
+                {
+                    enabledLayers.Add(layerName);
+                }
+            }
+
+            AddAvailableLayer("VK_LAYER_LUNARG_standard_validation");
+
+            this.instance = Instance.Create(
+                enabledLayers.ToArray(),
+                new[]
                 {
                     "VK_KHR_surface",
-                    "VK_KHR_win32_surface"
+                    "VK_KHR_win32_surface",
+                    "VK_EXT_debug_report"
                 },
                 applicationInfo: new ApplicationInfo
                 {
                     ApplicationName = "Hello Triangle",
                     ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
-                    EngineVersion = new Version(0, 1, 1)
+                    EngineVersion = new Version(0, 1, 1),
+                    ApiVersion = new Version(1, 0, 0)
                 });
+
+            instance.CreateDebugReportCallback(DebugReportDelegate, DebugReportFlags.Error | DebugReportFlags.Warning);
+        }
+
+        private static readonly DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
+
+        private static Bool32 DebugReport(DebugReportFlags flags, DebugReportObjectType objectType, ulong @object, HostSize location, int messageCode, string layerPrefix, string message, IntPtr userData)
+        {
+            Debug.WriteLine(message);
+
+            return false;
         }
 
         private void CreateSurface()
@@ -416,6 +448,7 @@ namespace SharpVk.HelloTriangle
                         },
                         ViewportState = new PipelineViewportStateCreateInfo
                         {
+                            ViewportCount = 1,
                             Viewports = new[]
                             {
                                 new Viewport
@@ -428,6 +461,7 @@ namespace SharpVk.HelloTriangle
                                     MinDepth = 0
                                 }
                             },
+                            ScissorCount = 1,
                             Scissors = new[]
                             {
                                 new Rect2D
