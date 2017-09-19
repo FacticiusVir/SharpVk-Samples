@@ -1,6 +1,6 @@
 ﻿//The MIT License (MIT)
 //
-//Copyright (c) Andrew Armstrong/FacticiusVir 2016
+//Copyright (c) Andrew Armstrong/FacticiusVir 2017
 //
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -21,6 +21,8 @@
 //SOFTWARE.
 
 using GlmSharp;
+using SharpVk.Khronos;
+using SharpVk.Multivendor;
 using SharpVk.Shanq;
 using SharpVk.Spirv;
 using System;
@@ -28,6 +30,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -156,26 +159,26 @@ namespace SharpVk.UniformBuffers
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Dispose();
+                frameBuffer.Destroy();
             }
             this.frameBuffers = null;
 
-            this.pipeline.Dispose();
+            this.pipeline.Destroy();
             this.pipeline = null;
 
-            this.pipelineLayout.Dispose();
+            this.pipelineLayout.Destroy();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Dispose();
+                imageView.Destroy();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Dispose();
+            this.renderPass.Destroy();
             this.renderPass = null;
 
-            this.swapChain.Dispose();
+            this.swapChain.Destroy();
             this.swapChain = null;
 
             this.CreateSwapChain();
@@ -190,84 +193,84 @@ namespace SharpVk.UniformBuffers
         {
             device.WaitIdle();
 
-            this.renderFinishedSemaphore.Dispose();
+            this.renderFinishedSemaphore.Destroy();
             this.renderFinishedSemaphore = null;
 
-            this.imageAvailableSemaphore.Dispose();
+            this.imageAvailableSemaphore.Destroy();
             this.imageAvailableSemaphore = null;
 
-            this.descriptorPool.Dispose();
+            this.descriptorPool.Destroy();
             this.descriptorPool = null;
             this.descriptorSet = null;
 
-            this.device.FreeMemory(this.uniformBufferMemory);
+            this.uniformBufferMemory.Free();
             this.uniformBufferMemory = null;
 
-            this.uniformBuffer.Dispose();
+            this.uniformBuffer.Destroy();
             this.uniformBuffer = null;
 
-            this.device.FreeMemory(this.uniformStagingBufferMemory);
+            this.uniformStagingBufferMemory.Free();
             this.uniformStagingBufferMemory = null;
 
-            this.uniformStagingBuffer.Dispose();
+            this.uniformStagingBuffer.Destroy();
             this.uniformStagingBuffer = null;
 
-            this.device.FreeMemory(this.indexBufferMemory);
+            this.indexBufferMemory.Free();
             this.indexBufferMemory = null;
 
-            this.indexBuffer.Dispose();
+            this.indexBuffer.Destroy();
             this.indexBuffer = null;
 
-            this.device.FreeMemory(this.vertexBufferMemory);
+            this.vertexBufferMemory.Free();
             this.vertexBufferMemory = null;
 
-            this.vertexBuffer.Dispose();
+            this.vertexBuffer.Destroy();
             this.vertexBuffer = null;
 
-            this.commandPool.Dispose();
+            this.commandPool.Destroy();
             this.commandPool = null;
             this.commandBuffers = null;
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Dispose();
+                frameBuffer.Destroy();
             }
             this.frameBuffers = null;
 
-            this.fragShader.Dispose();
+            this.fragShader.Destroy();
             this.fragShader = null;
 
-            this.vertShader.Dispose();
+            this.vertShader.Destroy();
             this.vertShader = null;
 
-            this.pipeline.Dispose();
+            this.pipeline.Destroy();
             this.pipeline = null;
 
-            this.pipelineLayout.Dispose();
+            this.pipelineLayout.Destroy();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Dispose();
+                imageView.Destroy();
             }
             this.swapChainImageViews = null;
 
-            this.descriptorSetLayout.Dispose();
+            this.descriptorSetLayout.Destroy();
             this.descriptorSetLayout = null;
 
-            this.renderPass.Dispose();
+            this.renderPass.Destroy();
             this.renderPass = null;
 
-            this.swapChain.Dispose();
+            this.swapChain.Destroy();
             this.swapChain = null;
 
-            this.device.Dispose();
+            this.device.Destroy();
             this.device = null;
 
-            this.surface.Dispose();
+            this.surface.Destroy();
             this.surface = null;
 
-            this.instance.Dispose();
+            this.instance.Destroy();
             this.instance = null;
         }
 
@@ -286,14 +289,13 @@ namespace SharpVk.UniformBuffers
 
             ubo.Proj[1, 1] *= -1;
 
-            uint uboSize = MemUtil.SizeOf<UniformBufferObject>();
+            uint uboSize = (uint)Unsafe.SizeOf<UniformBufferObject>();
 
-            IntPtr memoryBuffer = IntPtr.Zero;
-            this.uniformStagingBufferMemory.MapMemory(0, uboSize, MemoryMapFlags.None, ref memoryBuffer);
+            IntPtr memoryBuffer = this.uniformStagingBufferMemory.Map(0, uboSize, MemoryMapFlags.None);
 
             Marshal.StructureToPtr(ubo, memoryBuffer, false);
 
-            this.uniformStagingBufferMemory.UnmapMemory();
+            this.uniformStagingBufferMemory.Unmap();
 
             this.CopyBuffer(this.uniformStagingBuffer, this.uniformBuffer, uboSize);
         }
@@ -304,59 +306,55 @@ namespace SharpVk.UniformBuffers
 
             this.graphicsQueue.Submit(new SubmitInfo
             {
-                CommandBuffers = new [] { this.commandBuffers[nextImage] },
-                SignalSemaphores = new [] { this.renderFinishedSemaphore },
-                WaitDestinationStageMask = new [] { PipelineStageFlags.ColorAttachmentOutput },
-                WaitSemaphores = new [] { this.imageAvailableSemaphore }
+                CommandBuffers = new[] { this.commandBuffers[nextImage] },
+                SignalSemaphores = new[] { this.renderFinishedSemaphore },
+                WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
+                WaitSemaphores = new[] { this.imageAvailableSemaphore }
             }, null);
 
-            this.presentQueue.Present(new PresentInfo
-            {
-                ImageIndices = new uint[] { nextImage },
-                Results = new Result[1],
-                WaitSemaphores = new[] { this.renderFinishedSemaphore },
-                Swapchains = new[] { this.swapChain }
-            });
+            this.presentQueue.Present(this.renderFinishedSemaphore, this.swapChain, nextImage, new Result[1]);
         }
 
         private void CreateInstance()
         {
             var enabledLayers = new List<string>();
 
-            if (Instance.EnumerateLayerProperties().Any(x => x.LayerName == "VK_LAYER_LUNARG_standard_validation"))
+            //VK_LAYER_LUNARG_api_dump
+            //VK_LAYER_LUNARG_standard_validation
+
+            void AddAvailableLayer(string layerName)
             {
-                enabledLayers.Add("VK_LAYER_LUNARG_standard_validation");
+                if (Instance.EnumerateLayerProperties().Any(x => x.LayerName == layerName))
+                {
+                    enabledLayers.Add(layerName);
+                }
             }
 
-            this.instance = Instance.Create(new InstanceCreateInfo
-            {
-                ApplicationInfo = new ApplicationInfo
+            AddAvailableLayer("VK_LAYER_LUNARG_standard_validation");
+
+            this.instance = Instance.Create(
+                enabledLayers.ToArray(),
+                new[]
+                {
+                    "VK_KHR_surface",
+                    "VK_KHR_win32_surface",
+                    "VK_EXT_debug_report"
+                },
+                applicationInfo: new ApplicationInfo
                 {
                     ApplicationName = "Uniform Buffers",
-                    ApplicationVersion = Constants.SharpVkVersion,
+                    ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
-                    EngineVersion = Constants.SharpVkVersion,
-                    ApiVersion = Constants.ApiVersion10
-                },
-                EnabledExtensionNames = new[]
-                {
-                    KhrSurface.ExtensionName,
-                    KhrWin32Surface.ExtensionName,
-                    ExtDebugReport.ExtensionName
-                },
-                EnabledLayerNames = enabledLayers.ToArray()
-            }, null);
+                    EngineVersion = new Version(0, 4, 0),
+                    ApiVersion = new Version(1, 0, 0)
+                });
 
-            this.instance.CreateDebugReportCallback(new DebugReportCallbackCreateInfo
-            {
-                Flags = DebugReportFlags.Error | DebugReportFlags.Warning | DebugReportFlags.PerformanceWarning,
-                PfnCallback = DebugReportDelegate
-            });
+            instance.CreateDebugReportCallback(DebugReportDelegate, DebugReportFlags.Error | DebugReportFlags.Warning);
         }
 
-        private static readonly Interop.DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
+        private static readonly DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
 
-        private static Bool32 DebugReport(DebugReportFlags flags, DebugReportObjectType objectType, ulong @object, Size location, int messageCode, string layerPrefix, string message, IntPtr userData)
+        private static Bool32 DebugReport(DebugReportFlags flags, DebugReportObjectType objectType, ulong @object, HostSize location, int messageCode, string layerPrefix, string message, IntPtr userData)
         {
             Debug.WriteLine(message);
 
@@ -365,10 +363,7 @@ namespace SharpVk.UniformBuffers
 
         private void CreateSurface()
         {
-            this.surface = this.instance.CreateWin32Surface(new Win32SurfaceCreateInfo
-            {
-                Hwnd = this.window.Handle
-            });
+            this.surface = this.instance.CreateWin32Surface(IntPtr.Zero, this.window.Handle);
         }
 
         private void PickPhysicalDevice()
@@ -382,17 +377,14 @@ namespace SharpVk.UniformBuffers
         {
             QueueFamilyIndices queueFamilies = FindQueueFamilies(this.physicalDevice);
 
-            this.device = physicalDevice.CreateDevice(new DeviceCreateInfo
-            {
-                QueueCreateInfos = queueFamilies.Indices
-                                                .Select(index => new DeviceQueueCreateInfo
-                                                {
-                                                    QueueFamilyIndex = index,
-                                                    QueuePriorities = new[] { 1f }
-                                                }).ToArray(),
-                EnabledExtensionNames = new[] { KhrSwapchain.ExtensionName },
-                EnabledLayerNames = null
-            });
+            this.device = physicalDevice.CreateDevice(queueFamilies.Indices
+                                                                        .Select(index => new DeviceQueueCreateInfo
+                                                                        {
+                                                                            QueueFamilyIndex = index,
+                                                                            QueuePriorities = new[] { 1f }
+                                                                        }).ToArray(),
+                                                        null,
+                                                        new[] { "VK_KHR_swapchain" });
 
             this.graphicsQueue = this.device.GetQueue(queueFamilies.GraphicsFamily.Value, 0);
             this.presentQueue = this.device.GetQueue(queueFamilies.PresentFamily.Value, 0);
@@ -417,26 +409,22 @@ namespace SharpVk.UniformBuffers
 
             Extent2D extent = this.ChooseSwapExtent(swapChainSupport.Capabilities);
 
-            this.swapChain = device.CreateSwapchain(new SwapchainCreateInfo
-            {
-                Surface = surface,
-                Flags = SwapchainCreateFlags.None,
-                PresentMode = this.ChooseSwapPresentMode(swapChainSupport.PresentModes),
-                MinImageCount = imageCount,
-                ImageExtent = extent,
-                ImageUsage = ImageUsageFlags.ColorAttachment,
-                PreTransform = swapChainSupport.Capabilities.CurrentTransform,
-                ImageArrayLayers = 1,
-                ImageSharingMode = indices.Length == 1
-                                    ? SharingMode.Exclusive
-                                    : SharingMode.Concurrent,
-                QueueFamilyIndices = indices,
-                ImageFormat = surfaceFormat.Format,
-                ImageColorSpace = surfaceFormat.ColorSpace,
-                Clipped = true,
-                CompositeAlpha = CompositeAlphaFlags.Opaque,
-                OldSwapchain = this.swapChain
-            });
+            this.swapChain = device.CreateSwapchain(surface,
+                                                    imageCount,
+                                                    surfaceFormat.Format,
+                                                    surfaceFormat.ColorSpace,
+                                                    extent,
+                                                    1,
+                                                    ImageUsageFlags.ColorAttachment,
+                                                    indices.Length == 1
+                                                        ? SharingMode.Exclusive
+                                                        : SharingMode.Concurrent,
+                                                    indices,
+                                                    swapChainSupport.Capabilities.CurrentTransform,
+                                                    CompositeAlphaFlags.Opaque,
+                                                    this.ChooseSwapPresentMode(swapChainSupport.PresentModes),
+                                                    true,
+                                                    this.swapChain);
 
             this.swapChainImages = this.swapChain.GetImages();
             this.swapChainFormat = surfaceFormat.Format;
@@ -445,100 +433,85 @@ namespace SharpVk.UniformBuffers
 
         private void CreateImageViews()
         {
-            this.swapChainImageViews = this.swapChainImages.Select(image => device.CreateImageView(new ImageViewCreateInfo
-            {
-                Components = ComponentMapping.Identity,
-                Format = this.swapChainFormat,
-                Image = image,
-                Flags = ImageViewCreateFlags.None,
-                ViewType = ImageViewType.ImageView2d,
-                SubresourceRange = new ImageSubresourceRange
-                {
-                    AspectMask = ImageAspectFlags.Color,
-                    BaseMipLevel = 0,
-                    LevelCount = 1,
-                    BaseArrayLayer = 0,
-                    LayerCount = 1
-                }
-            })).ToArray();
+            this.swapChainImageViews = this.swapChainImages
+                                                .Select(image => device.CreateImageView(image,
+                                                                                        ImageViewType.ImageView2d,
+                                                                                        this.swapChainFormat,
+                                                                                        new ComponentMapping(),
+                                                                                        new ImageSubresourceRange
+                                                                                        {
+                                                                                            AspectMask = ImageAspectFlags.Color,
+                                                                                            BaseMipLevel = 0,
+                                                                                            LevelCount = 1,
+                                                                                            BaseArrayLayer = 0,
+                                                                                            LayerCount = 1
+                                                                                        }))
+                                                .ToArray();
         }
 
         private void CreateRenderPass()
         {
-            this.renderPass = device.CreateRenderPass(new RenderPassCreateInfo
-            {
-                Attachments = new[]
-                       {
-                        new AttachmentDescription
-                        {
-                            Format = this.swapChainFormat,
-                            Samples = SampleCountFlags.SampleCount1,
-                            LoadOp = AttachmentLoadOp.Clear,
-                            StoreOp = AttachmentStoreOp.Store,
-                            StencilLoadOp = AttachmentLoadOp.DontCare,
-                            StencilStoreOp = AttachmentStoreOp.DontCare,
-                            InitialLayout = ImageLayout.Undefined,
-                            FinalLayout = ImageLayout.PresentSource
-                        },
-                    },
-                Subpasses = new[]
-                       {
-                        new SubpassDescription
-                        {
-                            DepthStencilAttachment = new AttachmentReference
-                            {
-                                Attachment = Constants.AttachmentUnused
-                            },
-                            PipelineBindPoint = PipelineBindPoint.Graphics,
-                            ColorAttachments = new []
-                            {
-                                new AttachmentReference
-                                {
-                                    Attachment = 0,
-                                    Layout = ImageLayout.ColorAttachmentOptimal
-                                }
-                            }
-                        }
-                    },
-                Dependencies = new[]
-                       {
-                        new SubpassDependency
-                        {
-                            SourceSubpass = Constants.SubpassExternal,
-                            DestinationSubpass = 0,
-                            SourceStageMask = PipelineStageFlags.BottomOfPipe,
-                            SourceAccessMask = AccessFlags.MemoryRead,
-                            DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
-                        },
-                        new SubpassDependency
-                        {
-                            SourceSubpass = 0,
-                            DestinationSubpass = Constants.SubpassExternal,
-                            SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
-                            SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
-                            DestinationStageMask = PipelineStageFlags.BottomOfPipe,
-                            DestinationAccessMask = AccessFlags.MemoryRead
-                        }
-                    }
-            });
+            this.renderPass = device.CreateRenderPass(
+                                                    new AttachmentDescription
+                                                    {
+                                                        Format = this.swapChainFormat,
+                                                        Samples = SampleCountFlags.SampleCount1,
+                                                        LoadOp = AttachmentLoadOp.Clear,
+                                                        StoreOp = AttachmentStoreOp.Store,
+                                                        StencilLoadOp = AttachmentLoadOp.DontCare,
+                                                        StencilStoreOp = AttachmentStoreOp.DontCare,
+                                                        InitialLayout = ImageLayout.Undefined,
+                                                        FinalLayout = ImageLayout.PresentSourceKhr
+                                                    },
+                                                    new SubpassDescription
+                                                    {
+                                                        DepthStencilAttachment = new AttachmentReference
+                                                        {
+                                                            Attachment = Constants.AttachmentUnused
+                                                        },
+                                                        PipelineBindPoint = PipelineBindPoint.Graphics,
+                                                        ColorAttachments = new[]
+                                                        {
+                                                            new AttachmentReference
+                                                            {
+                                                                Attachment = 0,
+                                                                Layout = ImageLayout.ColorAttachmentOptimal
+                                                            }
+                                                        }
+                                                    },
+                                                    new[]
+                                                    {
+                                                        new SubpassDependency
+                                                        {
+                                                            SourceSubpass = Constants.SubpassExternal,
+                                                            DestinationSubpass = 0,
+                                                            SourceStageMask = PipelineStageFlags.BottomOfPipe,
+                                                            SourceAccessMask = AccessFlags.MemoryRead,
+                                                            DestinationStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                                                            DestinationAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite
+                                                        },
+                                                        new SubpassDependency
+                                                        {
+                                                            SourceSubpass = 0,
+                                                            DestinationSubpass = Constants.SubpassExternal,
+                                                            SourceStageMask = PipelineStageFlags.ColorAttachmentOutput,
+                                                            SourceAccessMask = AccessFlags.ColorAttachmentRead | AccessFlags.ColorAttachmentWrite,
+                                                            DestinationStageMask = PipelineStageFlags.BottomOfPipe,
+                                                            DestinationAccessMask = AccessFlags.MemoryRead
+                                                        }
+                                                    });
         }
 
         private void CreateDescriptorSetLayout()
         {
-            this.descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutCreateInfo
-            {
-                Bindings = new[]
-                {
+            this.descriptorSetLayout = device.CreateDescriptorSetLayout(
                     new DescriptorSetLayoutBinding
                     {
                         Binding = 0,
                         DescriptorType = DescriptorType.UniformBuffer,
                         StageFlags = ShaderStageFlags.Vertex | ShaderStageFlags.Fragment,
                         DescriptorCount = 1
-                    }
-                }
-            });
+                    });
         }
 
         private void CreateShaderModules()
@@ -547,7 +520,8 @@ namespace SharpVk.UniformBuffers
                                                             shanq => from input in shanq.GetInput<Vertex>()
                                                                      from ubo in shanq.GetBinding<UniformBufferObject>()
                                                                      let transform = ubo.Proj * ubo.View * ubo.Model
-                                                                     select new VertexOutput {
+                                                                     select new VertexOutput
+                                                                     {
                                                                          Position = transform * new vec4(input.Position, 0, 1),
                                                                          Colour = input.Colour
                                                                      });
@@ -556,7 +530,8 @@ namespace SharpVk.UniformBuffers
                                                             shanq => from input in shanq.GetInput<FragmentInput>()
                                                                      from ubo in shanq.GetBinding<UniformBufferObject>()
                                                                      let colour = new vec4(input.Colour, 1)
-                                                                     select new FragmentOutput {
+                                                                     select new FragmentOutput
+                                                                     {
                                                                          Colour = colour
                                                                      });
         }
@@ -566,16 +541,9 @@ namespace SharpVk.UniformBuffers
             var bindingDescription = Vertex.GetBindingDescription();
             var attributeDescriptions = Vertex.GetAttributeDescriptions();
 
-            this.pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutCreateInfo()
-            {
-                SetLayouts = new[]
-                {
-                    this.descriptorSetLayout
-                }
-            });
+            this.pipelineLayout = device.CreatePipelineLayout(this.descriptorSetLayout, null);
 
-            this.pipeline = device.CreateGraphicsPipelines(null, new[]
-            {
+            this.pipeline = device.CreateGraphicsPipelines(null,
                     new GraphicsPipelineCreateInfo
                     {
                         Layout = this.pipelineLayout,
@@ -583,7 +551,7 @@ namespace SharpVk.UniformBuffers
                         Subpass = 0,
                         VertexInputState = new PipelineVertexInputStateCreateInfo()
                         {
-                            VertexBindingDescriptions = new [] { bindingDescription },
+                            VertexBindingDescriptions = new[] { bindingDescription },
                             VertexAttributeDescriptions = attributeDescriptions
                         },
                         InputAssemblyState = new PipelineInputAssemblyStateCreateInfo
@@ -651,7 +619,7 @@ namespace SharpVk.UniformBuffers
                             },
                             LogicOpEnable = false,
                             LogicOp = LogicOp.Copy,
-                            BlendConstants = new float[] {0,0,0,0}
+                            BlendConstants = new float[] { 0, 0, 0, 0 }
                         },
                         Stages = new[]
                         {
@@ -668,87 +636,82 @@ namespace SharpVk.UniformBuffers
                                 Name = "main"
                             }
                         }
-                    }
-                }).Single();
+                    }).Single();
         }
 
         private void CreateFrameBuffers()
         {
-            this.frameBuffers = this.swapChainImageViews.Select(imageView => device.CreateFramebuffer(new FramebufferCreateInfo
-            {
-                RenderPass = renderPass,
-                Attachments = new[] { imageView },
-                Layers = 1,
-                Height = this.swapChainExtent.Height,
-                Width = this.swapChainExtent.Width
-            })).ToArray();
+            Framebuffer Create(ImageView imageView) => device.CreateFramebuffer(renderPass,
+                                                                                new[] { imageView },
+                                                                                this.swapChainExtent.Width,
+                                                                                this.swapChainExtent.Height,
+                                                                                1);
+
+            this.frameBuffers = this.swapChainImageViews.Select(Create).ToArray();
         }
 
         private void CreateCommandPools()
         {
             QueueFamilyIndices queueFamilies = FindQueueFamilies(this.physicalDevice);
 
-            this.transientCommandPool = device.CreateCommandPool(new CommandPoolCreateInfo
-            {
-                Flags = CommandPoolCreateFlags.Transient,
-                QueueFamilyIndex = queueFamilies.TransferFamily.Value
-            });
+            this.transientCommandPool = device.CreateCommandPool(queueFamilies.TransferFamily.Value, CommandPoolCreateFlags.Transient);
 
-            this.commandPool = device.CreateCommandPool(new CommandPoolCreateInfo
-            {
-                QueueFamilyIndex = queueFamilies.GraphicsFamily.Value
-            });
+            this.commandPool = device.CreateCommandPool(queueFamilies.GraphicsFamily.Value);
         }
 
         private void CreateVertexBuffers()
         {
-            uint bufferSize = MemUtil.SizeOf<Vertex>() * (uint)vertices.Length;
-            Buffer stagingBuffer;
-            DeviceMemory stagingBufferMemory;
+            int vertexSize = Unsafe.SizeOf<Vertex>();
 
-            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBuffer, out stagingBufferMemory);
+            uint bufferSize = (uint)(vertexSize * vertices.Length);
 
-            IntPtr memoryBuffer = IntPtr.Zero;
-            stagingBufferMemory.MapMemory(0, bufferSize, MemoryMapFlags.None, ref memoryBuffer);
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out var stagingBuffer, out var stagingBufferMemory);
 
-            MemUtil.WriteToPtr(memoryBuffer, vertices, 0, vertices.Length);
+            IntPtr memoryBuffer = stagingBufferMemory.Map(0, bufferSize, MemoryMapFlags.None);
 
-            stagingBufferMemory.UnmapMemory();
+            for (int index = 0; index < vertices.Length; index++)
+            {
+                Marshal.StructureToPtr(vertices[index], memoryBuffer + (vertexSize * index), false);
+            }
+
+            stagingBufferMemory.Unmap();
 
             this.CreateBuffer(bufferSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.VertexBuffer, MemoryPropertyFlags.DeviceLocal, out this.vertexBuffer, out this.vertexBufferMemory);
 
             this.CopyBuffer(stagingBuffer, this.vertexBuffer, bufferSize);
 
-            stagingBuffer.Dispose();
-            this.device.FreeMemory(stagingBufferMemory);
+            stagingBuffer.Destroy();
+            stagingBufferMemory.Free();
         }
 
         private void CreateIndexBuffer()
         {
-            ulong bufferSize = MemUtil.SizeOf<ushort>() * (uint)this.indices.Length;
-            Buffer stagingBuffer;
-            DeviceMemory stagingBufferMemory;
+            int indexSize = Unsafe.SizeOf<ushort>();
 
-            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out stagingBuffer, out stagingBufferMemory);
+            ulong bufferSize = (uint)(indexSize * this.indices.Length);
 
-            IntPtr memoryBuffer = IntPtr.Zero;
-            stagingBufferMemory.MapMemory(0, bufferSize, MemoryMapFlags.None, ref memoryBuffer);
+            this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out var stagingBuffer, out var stagingBufferMemory);
 
-            MemUtil.WriteToPtr(memoryBuffer, indices, 0, indices.Length);
+            IntPtr memoryBuffer = stagingBufferMemory.Map(0, bufferSize, MemoryMapFlags.None);
 
-            stagingBufferMemory.UnmapMemory();
+            for (int index = 0; index < indices.Length; index++)
+            {
+                Marshal.StructureToPtr(indices[index], memoryBuffer + (indexSize * index), false);
+            }
+
+            stagingBufferMemory.Unmap();
 
             this.CreateBuffer(bufferSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.IndexBuffer, MemoryPropertyFlags.DeviceLocal, out this.indexBuffer, out this.indexBufferMemory);
 
             this.CopyBuffer(stagingBuffer, this.indexBuffer, bufferSize);
 
-            stagingBuffer.Dispose();
-            this.device.FreeMemory(stagingBufferMemory);
+            stagingBuffer.Destroy();
+            stagingBufferMemory.Free();
         }
 
         private void CreateUniformBuffer()
         {
-            uint bufferSize = MemUtil.SizeOf<UniformBufferObject>();
+            uint bufferSize = (uint)Unsafe.SizeOf<UniformBufferObject>();
 
             this.CreateBuffer(bufferSize, BufferUsageFlags.TransferSource, MemoryPropertyFlags.HostVisible | MemoryPropertyFlags.HostCoherent, out this.uniformStagingBuffer, out this.uniformStagingBufferMemory);
             this.CreateBuffer(bufferSize, BufferUsageFlags.TransferDestination | BufferUsageFlags.UniformBuffer, MemoryPropertyFlags.DeviceLocal, out this.uniformBuffer, out this.uniformBufferMemory);
@@ -756,94 +719,67 @@ namespace SharpVk.UniformBuffers
 
         private void CreateDescriptorPool()
         {
-            this.descriptorPool = device.CreateDescriptorPool(new DescriptorPoolCreateInfo
-            {
-                PoolSizes = new[]
-                {
+            this.descriptorPool = device.CreateDescriptorPool(
+                    1,
                     new DescriptorPoolSize
                     {
                         DescriptorCount = 1,
                         Type = DescriptorType.UniformBuffer
-                    }
-                },
-                MaxSets = 1
-            });
+                    });
         }
 
         private void CreateDescriptorSet()
         {
-            this.descriptorSet = this.device.AllocateDescriptorSets(new DescriptorSetAllocateInfo
-            {
-                DescriptorPool = this.descriptorPool,
-                SetLayouts = new[]
-                {
-                    this.descriptorSetLayout
-                }
-            }).Single();
+            this.descriptorSet = this.device.AllocateDescriptorSets(this.descriptorPool, this.descriptorSetLayout).Single();
 
-            this.device.UpdateDescriptorSets(new[]
-            {
+            this.device.UpdateDescriptorSets(
                 new WriteDescriptorSet
                 {
-                    BufferInfo = new []
+                    BufferInfo = new[]
                     {
                         new DescriptorBufferInfo
                         {
                             Buffer = this.uniformBuffer,
                             Offset = 0,
-                            Range = MemUtil.SizeOf<UniformBufferObject>()
+                            Range = Unsafe.SizeOf<UniformBufferObject>()
                         }
                     },
+                    DescriptorCount = 1,
                     DestinationSet = this.descriptorSet,
                     DestinationBinding = 0,
                     DestinationArrayElement = 0,
                     DescriptorType = DescriptorType.UniformBuffer
-                }
-            }, null);
+                }, null);
         }
 
         private void CreateCommandBuffers()
         {
             this.commandPool.Reset(CommandPoolResetFlags.ReleaseResources);
 
-            this.commandBuffers = device.AllocateCommandBuffers(new CommandBufferAllocateInfo
-            {
-                CommandBufferCount = (uint)this.frameBuffers.Length,
-                CommandPool = this.commandPool,
-                Level = CommandBufferLevel.Primary
-            });
+            this.commandBuffers = device.AllocateCommandBuffers(this.commandPool, CommandBufferLevel.Primary, (uint)this.frameBuffers.Length);
 
             for (int index = 0; index < this.frameBuffers.Length; index++)
             {
                 var commandBuffer = this.commandBuffers[index];
 
-                commandBuffer.Begin(new CommandBufferBeginInfo
-                {
-                    Flags = CommandBufferUsageFlags.SimultaneousUse
-                });
+                commandBuffer.Begin(CommandBufferUsageFlags.SimultaneousUse);
 
-                commandBuffer.BeginRenderPass(new RenderPassBeginInfo
-                {
-                    RenderPass = this.renderPass,
-                    Framebuffer = this.frameBuffers[index],
-                    RenderArea = new Rect2D
-                    {
-                        Offset = new Offset2D(),
-                        Extent = this.swapChainExtent
-                    },
-                    ClearValues = new ClearValue[]
-                    {
-                        new ClearColorValue(0f, 0f, 0f, 1f)
-                    }
-                }, SubpassContents.Inline);
+                commandBuffer.BeginRenderPass(this.renderPass,
+                                                this.frameBuffers[index],
+                                                new Rect2D
+                                                {
+                                                    Extent = this.swapChainExtent
+                                                },
+                                                new ClearValue[1],
+                                                SubpassContents.Inline);
 
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, this.pipeline);
 
                 commandBuffer.BindVertexBuffers(0, new[] { this.vertexBuffer }, new DeviceSize[] { 0 });
 
-                commandBuffer.BindIndexBuffer(this.indexBuffer, 0, IndexType.UInt16);
+                commandBuffer.BindIndexBuffer(this.indexBuffer, 0, IndexType.Uint16);
 
-                commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, this.pipelineLayout, 0, new[] { this.descriptorSet }, null);
+                commandBuffer.BindDescriptorSets(PipelineBindPoint.Graphics, this.pipelineLayout, 0, this.descriptorSet, null);
 
                 commandBuffer.DrawIndexed((uint)this.indices.Length, 1, 0, 0, 0);
 
@@ -855,8 +791,8 @@ namespace SharpVk.UniformBuffers
 
         private void CreateSemaphores()
         {
-            this.imageAvailableSemaphore = device.CreateSemaphore(new SemaphoreCreateInfo());
-            this.renderFinishedSemaphore = device.CreateSemaphore(new SemaphoreCreateInfo());
+            this.imageAvailableSemaphore = device.CreateSemaphore();
+            this.renderFinishedSemaphore = device.CreateSemaphore();
         }
 
         private uint FindMemoryType(uint typeFilter, MemoryPropertyFlags flags)
@@ -913,14 +849,14 @@ namespace SharpVk.UniformBuffers
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8G8R8A8UNorm,
+                    Format = Format.B8g8r8a8Unorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
@@ -964,7 +900,7 @@ namespace SharpVk.UniformBuffers
 
         private bool IsSuitableDevice(PhysicalDevice device)
         {
-            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == KhrSwapchain.ExtensionName)
+            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == "VK_KHR_swapchain")
                     && FindQueueFamilies(device).IsComplete;
         }
 
@@ -982,37 +918,20 @@ namespace SharpVk.UniformBuffers
 
         private void CreateBuffer(ulong size, BufferUsageFlags usage, MemoryPropertyFlags properties, out Buffer buffer, out DeviceMemory bufferMemory)
         {
-            buffer = device.CreateBuffer(new BufferCreateInfo
-            {
-                Size = size,
-                Usage = usage,
-                SharingMode = SharingMode.Exclusive
-            });
+            buffer = device.CreateBuffer(size, usage, SharingMode.Exclusive, null);
 
             var memRequirements = buffer.GetMemoryRequirements();
 
-            bufferMemory = device.AllocateMemory(new MemoryAllocateInfo
-            {
-                AllocationSize = memRequirements.Size,
-                MemoryTypeIndex = FindMemoryType(memRequirements.MemoryTypeBits, properties)
-            });
+            bufferMemory = device.AllocateMemory(memRequirements.Size, FindMemoryType(memRequirements.MemoryTypeBits, properties));
 
             buffer.BindMemory(bufferMemory, 0);
         }
 
         private void CopyBuffer(Buffer sourceBuffer, Buffer destinationBuffer, ulong size)
         {
-            var transferBuffers = device.AllocateCommandBuffers(new CommandBufferAllocateInfo
-            {
-                Level = CommandBufferLevel.Primary,
-                CommandPool = this.transientCommandPool,
-                CommandBufferCount = 1
-            });
+            var transferBuffers = device.AllocateCommandBuffers(this.transientCommandPool, CommandBufferLevel.Primary, 1);
 
-            transferBuffers[0].Begin(new CommandBufferBeginInfo
-            {
-                Flags = CommandBufferUsageFlags.OneTimeSubmit
-            });
+            transferBuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
 
             transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new[] { new BufferCopy { Size = size } });
 
@@ -1129,14 +1048,14 @@ namespace SharpVk.UniformBuffers
                     {
                         Binding = 0,
                         Location = 0,
-                        Format = Format.R32G32SFloat,
+                        Format = Format.R32g32Sfloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Position")
                     },
                     new VertexInputAttributeDescription
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32G32B32SFloat,
+                        Format = Format.R32g32b32Sfloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Colour")
                     }
                 };
