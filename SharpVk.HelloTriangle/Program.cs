@@ -121,26 +121,26 @@ namespace SharpVk.HelloTriangle
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
             this.CreateSwapChain();
@@ -155,52 +155,52 @@ namespace SharpVk.HelloTriangle
         {
             device.WaitIdle();
 
-            this.renderFinishedSemaphore.Destroy();
+            this.renderFinishedSemaphore.Dispose();
             this.renderFinishedSemaphore = null;
 
-            this.imageAvailableSemaphore.Destroy();
+            this.imageAvailableSemaphore.Dispose();
             this.imageAvailableSemaphore = null;
 
-            this.commandPool.Destroy();
+            this.commandPool.Dispose();
             this.commandPool = null;
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.fragShader.Destroy();
+            this.fragShader.Dispose();
             this.fragShader = null;
 
-            this.vertShader.Destroy();
+            this.vertShader.Dispose();
             this.vertShader = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
-            this.device.Destroy();
+            this.device.Dispose();
             this.device = null;
 
-            this.surface.Destroy();
+            this.surface.Dispose();
             this.surface = null;
 
-            this.instance.Destroy();
+            this.instance.Dispose();
             this.instance = null;
         }
 
@@ -366,7 +366,7 @@ namespace SharpVk.HelloTriangle
                                                         StencilLoadOp = AttachmentLoadOp.DontCare,
                                                         StencilStoreOp = AttachmentStoreOp.DontCare,
                                                         InitialLayout = ImageLayout.Undefined,
-                                                        FinalLayout = ImageLayout.PresentSourceKhr
+                                                        FinalLayout = ImageLayout.PresentSource
                                                     },
                                                     new SubpassDescription
                                                     {
@@ -598,14 +598,14 @@ namespace SharpVk.HelloTriangle
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8g8r8a8Unorm,
+                    Format = Format.B8G8R8A8UNorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }

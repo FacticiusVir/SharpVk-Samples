@@ -24,6 +24,7 @@ using GlmSharp;
 using SharpVk.Khronos;
 using SharpVk.Multivendor;
 using SharpVk.Shanq;
+using SharpVk.Shanq.GlmSharp;
 using SharpVk.Spirv;
 using System;
 using System.Collections.Generic;
@@ -159,26 +160,26 @@ namespace SharpVk.UniformBuffers
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
             this.CreateSwapChain();
@@ -193,84 +194,84 @@ namespace SharpVk.UniformBuffers
         {
             device.WaitIdle();
 
-            this.renderFinishedSemaphore.Destroy();
+            this.renderFinishedSemaphore.Dispose();
             this.renderFinishedSemaphore = null;
 
-            this.imageAvailableSemaphore.Destroy();
+            this.imageAvailableSemaphore.Dispose();
             this.imageAvailableSemaphore = null;
 
-            this.descriptorPool.Destroy();
+            this.descriptorPool.Dispose();
             this.descriptorPool = null;
             this.descriptorSet = null;
 
             this.uniformBufferMemory.Free();
             this.uniformBufferMemory = null;
 
-            this.uniformBuffer.Destroy();
+            this.uniformBuffer.Dispose();
             this.uniformBuffer = null;
 
             this.uniformStagingBufferMemory.Free();
             this.uniformStagingBufferMemory = null;
 
-            this.uniformStagingBuffer.Destroy();
+            this.uniformStagingBuffer.Dispose();
             this.uniformStagingBuffer = null;
 
             this.indexBufferMemory.Free();
             this.indexBufferMemory = null;
 
-            this.indexBuffer.Destroy();
+            this.indexBuffer.Dispose();
             this.indexBuffer = null;
 
             this.vertexBufferMemory.Free();
             this.vertexBufferMemory = null;
 
-            this.vertexBuffer.Destroy();
+            this.vertexBuffer.Dispose();
             this.vertexBuffer = null;
 
-            this.commandPool.Destroy();
+            this.commandPool.Dispose();
             this.commandPool = null;
             this.commandBuffers = null;
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.fragShader.Destroy();
+            this.fragShader.Dispose();
             this.fragShader = null;
 
-            this.vertShader.Destroy();
+            this.vertShader.Dispose();
             this.vertShader = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.descriptorSetLayout.Destroy();
+            this.descriptorSetLayout.Dispose();
             this.descriptorSetLayout = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
-            this.device.Destroy();
+            this.device.Dispose();
             this.device = null;
 
-            this.surface.Destroy();
+            this.surface.Dispose();
             this.surface = null;
 
-            this.instance.Destroy();
+            this.instance.Dispose();
             this.instance = null;
         }
 
@@ -461,7 +462,7 @@ namespace SharpVk.UniformBuffers
                                                         StencilLoadOp = AttachmentLoadOp.DontCare,
                                                         StencilStoreOp = AttachmentStoreOp.DontCare,
                                                         InitialLayout = ImageLayout.Undefined,
-                                                        FinalLayout = ImageLayout.PresentSourceKhr
+                                                        FinalLayout = ImageLayout.PresentSource
                                                     },
                                                     new SubpassDescription
                                                     {
@@ -516,24 +517,22 @@ namespace SharpVk.UniformBuffers
 
         private void CreateShaderModules()
         {
-            this.vertShader = ShanqShader.CreateVertexModule(this.device,
-                                                            shanq => from input in shanq.GetInput<Vertex>()
-                                                                     from ubo in shanq.GetBinding<UniformBufferObject>()
-                                                                     let transform = ubo.Proj * ubo.View * ubo.Model
-                                                                     select new VertexOutput
-                                                                     {
-                                                                         Position = transform * new vec4(input.Position, 0, 1),
-                                                                         Colour = input.Colour
-                                                                     });
+            this.vertShader = this.device.CreateVertexModule(shanq => from input in shanq.GetInput<Vertex>()
+                                                                      from ubo in shanq.GetBinding<UniformBufferObject>()
+                                                                      let transform = ubo.Proj * ubo.View * ubo.Model
+                                                                      select new VertexOutput
+                                                                      {
+                                                                          Position = transform * new vec4(input.Position, 0, 1),
+                                                                          Colour = input.Colour
+                                                                      });
 
-            this.fragShader = ShanqShader.CreateFragmentModule(this.device,
-                                                            shanq => from input in shanq.GetInput<FragmentInput>()
-                                                                     from ubo in shanq.GetBinding<UniformBufferObject>()
-                                                                     let colour = new vec4(input.Colour, 1)
-                                                                     select new FragmentOutput
-                                                                     {
-                                                                         Colour = colour
-                                                                     });
+            this.fragShader = this.device.CreateFragmentModule(VectorTypeLibrary.Instance,
+                                                                shanq => from input in shanq.GetInput<FragmentInput>()
+                                                                         let colour = new vec4(input.Colour, 1)
+                                                                         select new FragmentOutput
+                                                                         {
+                                                                             Colour = colour
+                                                                         });
         }
 
         private void CreateGraphicsPipeline()
@@ -680,7 +679,7 @@ namespace SharpVk.UniformBuffers
 
             this.CopyBuffer(stagingBuffer, this.vertexBuffer, bufferSize);
 
-            stagingBuffer.Destroy();
+            stagingBuffer.Dispose();
             stagingBufferMemory.Free();
         }
 
@@ -705,7 +704,7 @@ namespace SharpVk.UniformBuffers
 
             this.CopyBuffer(stagingBuffer, this.indexBuffer, bufferSize);
 
-            stagingBuffer.Destroy();
+            stagingBuffer.Dispose();
             stagingBufferMemory.Free();
         }
 
@@ -849,14 +848,14 @@ namespace SharpVk.UniformBuffers
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8g8r8a8Unorm,
+                    Format = Format.B8G8R8A8UNorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
@@ -1048,14 +1047,14 @@ namespace SharpVk.UniformBuffers
                     {
                         Binding = 0,
                         Location = 0,
-                        Format = Format.R32g32Sfloat,
+                        Format = Format.R32G32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Position")
                     },
                     new VertexInputAttributeDescription
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32g32b32Sfloat,
+                        Format = Format.R32G32B32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Colour")
                     }
                 };

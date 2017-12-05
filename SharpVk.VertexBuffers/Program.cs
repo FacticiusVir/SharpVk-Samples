@@ -24,6 +24,7 @@ using GlmSharp;
 using SharpVk.Khronos;
 using SharpVk.Multivendor;
 using SharpVk.Shanq;
+using SharpVk.Shanq.GlmSharp;
 using SharpVk.Spirv;
 using System;
 using System.Collections.Generic;
@@ -144,26 +145,26 @@ namespace SharpVk.VertexBuffers
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
             this.CreateSwapChain();
@@ -178,58 +179,58 @@ namespace SharpVk.VertexBuffers
         {
             device.WaitIdle();
 
-            this.renderFinishedSemaphore.Destroy();
+            this.renderFinishedSemaphore.Dispose();
             this.renderFinishedSemaphore = null;
 
-            this.imageAvailableSemaphore.Destroy();
+            this.imageAvailableSemaphore.Dispose();
             this.imageAvailableSemaphore = null;
 
             this.vertexBufferMemory.Free();
             this.vertexBufferMemory = null;
 
-            this.vertexBuffer.Destroy();
+            this.vertexBuffer.Dispose();
             this.vertexBuffer = null;
 
-            this.commandPool.Destroy();
+            this.commandPool.Dispose();
             this.commandPool = null;
 
             foreach (var frameBuffer in this.frameBuffers)
             {
-                frameBuffer.Destroy();
+                frameBuffer.Dispose();
             }
             this.frameBuffers = null;
 
-            this.fragShader.Destroy();
+            this.fragShader.Dispose();
             this.fragShader = null;
 
-            this.vertShader.Destroy();
+            this.vertShader.Dispose();
             this.vertShader = null;
 
-            this.pipeline.Destroy();
+            this.pipeline.Dispose();
             this.pipeline = null;
 
-            this.pipelineLayout.Destroy();
+            this.pipelineLayout.Dispose();
             this.pipelineLayout = null;
 
             foreach (var imageView in this.swapChainImageViews)
             {
-                imageView.Destroy();
+                imageView.Dispose();
             }
             this.swapChainImageViews = null;
 
-            this.renderPass.Destroy();
+            this.renderPass.Dispose();
             this.renderPass = null;
 
-            this.swapChain.Destroy();
+            this.swapChain.Dispose();
             this.swapChain = null;
 
-            this.device.Destroy();
+            this.device.Dispose();
             this.device = null;
 
-            this.surface.Destroy();
+            this.surface.Dispose();
             this.surface = null;
 
-            this.instance.Destroy();
+            this.instance.Dispose();
             this.instance = null;
         }
 
@@ -237,16 +238,14 @@ namespace SharpVk.VertexBuffers
         {
             uint nextImage = this.swapChain.AcquireNextImage(uint.MaxValue, this.imageAvailableSemaphore, null);
 
-            this.graphicsQueue.Submit(new SubmitInfo[]
-            {
+            this.graphicsQueue.Submit(
                 new SubmitInfo
                 {
-                    CommandBuffers = new CommandBuffer[] { this.commandBuffers[nextImage] },
+                    CommandBuffers = new [] { this.commandBuffers[nextImage] },
                     SignalSemaphores = new[] { this.renderFinishedSemaphore },
-                    WaitDestinationStageMask = new [] { PipelineStageFlags.ColorAttachmentOutput },
+                    WaitDestinationStageMask = new[] { PipelineStageFlags.ColorAttachmentOutput },
                     WaitSemaphores = new [] { this.imageAvailableSemaphore }
-                }
-            }, null);
+                }, null);
 
             this.presentQueue.Present(this.renderFinishedSemaphore, this.swapChain, nextImage, new Result[1]);
         }
@@ -264,9 +263,9 @@ namespace SharpVk.VertexBuffers
                 enabledLayers.ToArray(),
                 new[]
                 {
-                    "VK_KHR_surface",
-                    "VK_KHR_win32_surface",
-                    "VK_EXT_debug_report"
+                    KhrExtensions.Surface,
+                    KhrExtensions.Win32Surface,
+                    ExtExtensions.DebugReport,
                 },
                 applicationInfo: new ApplicationInfo
                 {
@@ -312,7 +311,7 @@ namespace SharpVk.VertexBuffers
                                                                             QueuePriorities = new[] { 1f }
                                                                         }).ToArray(),
                                                         null,
-                                                        new[] { "VK_KHR_swapchain" });
+                                                        KhrExtensions.Swapchain);
 
             this.graphicsQueue = this.device.GetQueue(queueFamilies.GraphicsFamily.Value, 0);
             this.presentQueue = this.device.GetQueue(queueFamilies.PresentFamily.Value, 0);
@@ -336,7 +335,7 @@ namespace SharpVk.VertexBuffers
             var indices = queueFamilies.Indices.ToArray();
 
             Extent2D extent = this.ChooseSwapExtent(swapChainSupport.Capabilities);
-            
+
             this.swapChain = device.CreateSwapchain(surface,
                                                     imageCount,
                                                     surfaceFormat.Format,
@@ -365,7 +364,7 @@ namespace SharpVk.VertexBuffers
                                                 .Select(image => device.CreateImageView(image,
                                                                                         ImageViewType.ImageView2d,
                                                                                         this.swapChainFormat,
-                                                                                        new ComponentMapping(),
+                                                                                        ComponentMapping.Identity,
                                                                                         new ImageSubresourceRange
                                                                                         {
                                                                                             AspectMask = ImageAspectFlags.Color,
@@ -389,22 +388,15 @@ namespace SharpVk.VertexBuffers
                                                         StencilLoadOp = AttachmentLoadOp.DontCare,
                                                         StencilStoreOp = AttachmentStoreOp.DontCare,
                                                         InitialLayout = ImageLayout.Undefined,
-                                                        FinalLayout = ImageLayout.PresentSourceKhr
+                                                        FinalLayout = ImageLayout.PresentSource
                                                     },
                                                     new SubpassDescription
                                                     {
-                                                        DepthStencilAttachment = new AttachmentReference
-                                                        {
-                                                            Attachment = Constants.AttachmentUnused
-                                                        },
+                                                        DepthStencilAttachment = new AttachmentReference(Constants.AttachmentUnused, ImageLayout.Undefined),
                                                         PipelineBindPoint = PipelineBindPoint.Graphics,
                                                         ColorAttachments = new[]
                                                         {
-                                                            new AttachmentReference
-                                                            {
-                                                                Attachment = 0,
-                                                                Layout = ImageLayout.ColorAttachmentOptimal
-                                                            }
+                                                            new AttachmentReference(0, ImageLayout.ColorAttachmentOptimal)
                                                         }
                                                     },
                                                     new[]
@@ -433,15 +425,19 @@ namespace SharpVk.VertexBuffers
         private void CreateShaderModules()
         {
             this.vertShader = ShanqShader.CreateVertexModule(this.device,
+                                                            VectorTypeLibrary.Instance,
                                                             shanq => from input in shanq.GetInput<Vertex>()
-                                                                     select new VertexOutput {
+                                                                     select new VertexOutput
+                                                                     {
                                                                          Colour = input.Colour,
                                                                          Position = new vec4(input.Position, 0, 1)
                                                                      });
 
             this.fragShader = ShanqShader.CreateFragmentModule(this.device,
+                                                            VectorTypeLibrary.Instance,
                                                             shanq => from input in shanq.GetInput<FragmentInput>()
-                                                                     select new FragmentOutput {
+                                                                     select new FragmentOutput
+                                                                     {
                                                                          Colour = new vec4(input.Colour, 1)
                                                                      });
         }
@@ -474,23 +470,11 @@ namespace SharpVk.VertexBuffers
                         {
                             Viewports = new[]
                             {
-                                new Viewport
-                                {
-                                    X = 0f,
-                                    Y = 0f,
-                                    Width = this.swapChainExtent.Width,
-                                    Height = this.swapChainExtent.Height,
-                                    MaxDepth = 1,
-                                    MinDepth = 0
-                                }
+                                new Viewport(0f, 0f, this.swapChainExtent.Width, this.swapChainExtent.Height, 0f, 1f)
                             },
                             Scissors = new[]
                             {
-                                new Rect2D
-                                {
-                                    Offset = new Offset2D(),
-                                    Extent= this.swapChainExtent
-                                }
+                                new Rect2D(new Offset2D(), this.swapChainExtent)
                             }
                         },
                         RasterizationState = new PipelineRasterizationStateCreateInfo
@@ -530,7 +514,7 @@ namespace SharpVk.VertexBuffers
                             },
                             LogicOpEnable = false,
                             LogicOp = LogicOp.Copy,
-                            BlendConstants = new float[] {0,0,0,0}
+                            BlendConstants = new float[] { 0, 0, 0, 0 }
                         },
                         Stages = new[]
                         {
@@ -554,7 +538,7 @@ namespace SharpVk.VertexBuffers
         private void CreateFrameBuffers()
         {
             Framebuffer Create(ImageView imageView) => device.CreateFramebuffer(renderPass,
-                                                                                new[] { imageView },
+                                                                                imageView,
                                                                                 this.swapChainExtent.Width,
                                                                                 this.swapChainExtent.Height,
                                                                                 1);
@@ -592,7 +576,7 @@ namespace SharpVk.VertexBuffers
 
             this.CopyBuffer(stagingBuffer, this.vertexBuffer, bufferSize);
 
-            stagingBuffer.Destroy();
+            stagingBuffer.Dispose();
             stagingBufferMemory.Free();
         }
 
@@ -617,7 +601,7 @@ namespace SharpVk.VertexBuffers
 
             this.CopyBuffer(stagingBuffer, this.indexBuffer, bufferSize);
 
-            stagingBuffer.Destroy();
+            stagingBuffer.Dispose();
             stagingBufferMemory.Free();
         }
 
@@ -635,16 +619,13 @@ namespace SharpVk.VertexBuffers
 
                 commandBuffer.BeginRenderPass(this.renderPass,
                                                 this.frameBuffers[index],
-                                                new Rect2D
-                                                {
-                                                    Extent = this.swapChainExtent
-                                                },
+                                                new Rect2D(new Offset2D(), this.swapChainExtent),
                                                 new ClearValue[1],
                                                 SubpassContents.Inline);
 
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, this.pipeline);
 
-                commandBuffer.BindVertexBuffers(0, new[] { this.vertexBuffer }, new DeviceSize[] { 0 });
+                commandBuffer.BindVertexBuffers(0, this.vertexBuffer, (DeviceSize)0);
 
                 commandBuffer.BindIndexBuffer(this.indexBuffer, 0, IndexType.Uint16);
 
@@ -716,14 +697,14 @@ namespace SharpVk.VertexBuffers
             {
                 return new SurfaceFormat
                 {
-                    Format = Format.B8g8r8a8Unorm,
+                    Format = Format.B8G8R8A8UNorm,
                     ColorSpace = ColorSpace.SrgbNonlinear
                 };
             }
 
             foreach (var format in availableFormats)
             {
-                if (format.Format == Format.B8g8r8a8Unorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
+                if (format.Format == Format.B8G8R8A8UNorm && format.ColorSpace == ColorSpace.SrgbNonlinear)
                 {
                     return format;
                 }
@@ -767,7 +748,7 @@ namespace SharpVk.VertexBuffers
 
         private bool IsSuitableDevice(PhysicalDevice device)
         {
-            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == "VK_KHR_swapchain")
+            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == KhrExtensions.Swapchain)
                     && FindQueueFamilies(device).IsComplete;
         }
 
@@ -800,11 +781,11 @@ namespace SharpVk.VertexBuffers
 
             transferBuffers[0].Begin(CommandBufferUsageFlags.OneTimeSubmit);
 
-            transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new[] { new BufferCopy { Size = size } });
+            transferBuffers[0].CopyBuffer(sourceBuffer, destinationBuffer, new BufferCopy { Size = size });
 
             transferBuffers[0].End();
 
-            this.transferQueue.Submit(new[] { new SubmitInfo { CommandBuffers = transferBuffers } }, null);
+            this.transferQueue.Submit(new SubmitInfo { CommandBuffers = transferBuffers }, null);
             this.transferQueue.WaitIdle();
 
             this.transientCommandPool.FreeCommandBuffers(transferBuffers);
@@ -908,14 +889,14 @@ namespace SharpVk.VertexBuffers
                     {
                         Binding = 0,
                         Location = 0,
-                        Format = Format.R32g32Sfloat,
+                        Format = Format.R32G32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Position")
                     },
                     new VertexInputAttributeDescription
                     {
                         Binding = 0,
                         Location = 1,
-                        Format = Format.R32g32b32Sfloat,
+                        Format = Format.R32G32B32SFloat,
                         Offset = (uint)Marshal.OffsetOf<Vertex>("Colour")
                     }
                 };
