@@ -526,8 +526,7 @@ namespace SharpVk.UniformBuffers
                                                                           Colour = input.Colour
                                                                       });
 
-            this.fragShader = this.device.CreateFragmentModule(VectorTypeLibrary.Instance,
-                                                                shanq => from input in shanq.GetInput<FragmentInput>()
+            this.fragShader = this.device.CreateFragmentModule(shanq => from input in shanq.GetInput<FragmentInput>()
                                                                          let colour = new vec4(input.Colour, 1)
                                                                          select new FragmentOutput
                                                                          {
