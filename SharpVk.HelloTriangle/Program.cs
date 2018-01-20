@@ -20,6 +20,7 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
+using SharpVk.Glfw;
 using SharpVk.Khronos;
 using SharpVk.Multivendor;
 using System;
@@ -27,7 +28,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Windows.Forms;
 
 namespace SharpVk.HelloTriangle
 {
@@ -36,24 +36,32 @@ namespace SharpVk.HelloTriangle
         private const int SurfaceWidth = 800;
         private const int SurfaceHeight = 600;
 
-        private Form window;
+        private static readonly DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
+
+        private WindowHandle window;
+        private WindowSizeDelegate windowSizeCallback;
+
         private Instance instance;
         private Surface surface;
         private PhysicalDevice physicalDevice;
         private Device device;
         private Queue graphicsQueue;
         private Queue presentQueue;
+
         private Swapchain swapChain;
         private Image[] swapChainImages;
         private ImageView[] swapChainImageViews;
+
         private RenderPass renderPass;
         private PipelineLayout pipelineLayout;
         private Pipeline pipeline;
         private ShaderModule fragShader;
         private ShaderModule vertShader;
         private Framebuffer[] frameBuffers;
+
         private CommandPool commandPool;
         private CommandBuffer[] commandBuffers;
+
         private Semaphore imageAvailableSemaphore;
         private Semaphore renderFinishedSemaphore;
 
@@ -75,13 +83,13 @@ namespace SharpVk.HelloTriangle
 
         private void InitialiseWindow()
         {
-            this.window = new Form
-            {
-                Text = "Vulkan",
-                ClientSize = new System.Drawing.Size(SurfaceWidth, SurfaceHeight)
-            };
+            Glfw3.Init();
 
-            this.window.ClientSizeChanged += (x, y) => this.RecreateSwapChain();
+            Glfw3.WindowHint(0x00022001, 0);
+            this.window = Glfw3.CreateWindow(SurfaceWidth, SurfaceHeight, "Hello Triangle", IntPtr.Zero, IntPtr.Zero);
+            this.windowSizeCallback = (x, y, z) => this.RecreateSwapChain();
+
+            Glfw3.SetWindowSizeCallback(this.window, this.windowSizeCallback);
         }
 
         private void InitialiseVulkan()
@@ -103,13 +111,11 @@ namespace SharpVk.HelloTriangle
 
         private void MainLoop()
         {
-            this.window.Show();
-
-            while (!this.window.IsDisposed)
+            while (!Glfw3.WindowShouldClose(this.window))
             {
                 this.DrawFrame();
 
-                Application.DoEvents();
+                Glfw3.PollEvents();
             }
         }
 
@@ -211,7 +217,7 @@ namespace SharpVk.HelloTriangle
             this.graphicsQueue.Submit(
                 new SubmitInfo
                 {
-                    CommandBuffers = new CommandBuffer[] { this.commandBuffers[nextImage] },
+                    CommandBuffers = new[] { this.commandBuffers[nextImage] },
                     SignalSemaphores = new[] { this.renderFinishedSemaphore },
                     WaitDestinationStageMask = new [] { PipelineStageFlags.ColorAttachmentOutput },
                     WaitSemaphores = new [] { this.imageAvailableSemaphore }
@@ -240,25 +246,18 @@ namespace SharpVk.HelloTriangle
 
             this.instance = Instance.Create(
                 enabledLayers.ToArray(),
-                new[]
-                {
-                    "VK_KHR_surface",
-                    "VK_KHR_win32_surface",
-                    "VK_EXT_debug_report"
-                },
+                Glfw3.GetRequiredInstanceExtensions().Append(ExtExtensions.DebugReport).ToArray(),
                 applicationInfo: new ApplicationInfo
                 {
                     ApplicationName = "Hello Triangle",
                     ApplicationVersion = new Version(1, 0, 0),
                     EngineName = "SharpVk",
-                    EngineVersion = new Version(0, 4, 0),
+                    EngineVersion = new Version(0, 4, 1),
                     ApiVersion = new Version(1, 0, 0)
                 });
 
             instance.CreateDebugReportCallback(DebugReportDelegate, DebugReportFlags.Error | DebugReportFlags.Warning);
         }
-
-        private static readonly DebugReportCallbackDelegate DebugReportDelegate = DebugReport;
 
         private static Bool32 DebugReport(DebugReportFlags flags, DebugReportObjectType objectType, ulong @object, HostSize location, int messageCode, string layerPrefix, string message, IntPtr userData)
         {
@@ -269,7 +268,7 @@ namespace SharpVk.HelloTriangle
 
         private void CreateSurface()
         {
-            this.surface = this.instance.CreateWin32Surface(IntPtr.Zero, this.window.Handle);
+            this.surface = this.instance.CreateGlfw3Surface(this.window);
         }
 
         private void PickPhysicalDevice()
@@ -290,7 +289,7 @@ namespace SharpVk.HelloTriangle
                                                                             QueuePriorities = new[] { 1f }
                                                                         }).ToArray(),
                                                         null,
-                                                        new[] { "VK_KHR_swapchain" });
+                                                        KhrExtensions.Swapchain);
 
             this.graphicsQueue = this.device.GetQueue(queueFamilies.GraphicsFamily.Value, 0);
             this.presentQueue = this.device.GetQueue(queueFamilies.PresentFamily.Value, 0);
@@ -342,15 +341,8 @@ namespace SharpVk.HelloTriangle
                                                 .Select(image => device.CreateImageView(image,
                                                                                         ImageViewType.ImageView2d,
                                                                                         this.swapChainFormat,
-                                                                                        new ComponentMapping(),
-                                                                                        new ImageSubresourceRange
-                                                                                        {
-                                                                                            AspectMask = ImageAspectFlags.Color,
-                                                                                            BaseMipLevel = 0,
-                                                                                            LevelCount = 1,
-                                                                                            BaseArrayLayer = 0,
-                                                                                            LayerCount = 1
-                                                                                        }))
+                                                                                        ComponentMapping.Identity,
+                                                                                        new ImageSubresourceRange(ImageAspectFlags.Color, 0, 1, 0, 1)))
                                                 .ToArray();
         }
 
@@ -426,101 +418,81 @@ namespace SharpVk.HelloTriangle
         {
             this.pipelineLayout = device.CreatePipelineLayout(null, null);
 
-            this.pipeline = device.CreateGraphicsPipelines(null,
-                new GraphicsPipelineCreateInfo
-                {
-                    Layout = this.pipelineLayout,
-                    RenderPass = this.renderPass,
-                    Subpass = 0,
-                    VertexInputState = new PipelineVertexInputStateCreateInfo(),
-                    InputAssemblyState = new PipelineInputAssemblyStateCreateInfo
-                    {
-                        PrimitiveRestartEnable = false,
-                        Topology = PrimitiveTopology.TriangleList
-                    },
-                    ViewportState = new PipelineViewportStateCreateInfo
-                    {
-                        Viewports = new[]
-                        {
-                            new Viewport
-                            {
-                                X = 0f,
-                                Y = 0f,
-                                Width = this.swapChainExtent.Width,
-                                Height = this.swapChainExtent.Height,
-                                MaxDepth = 1,
-                                MinDepth = 0
-                            }
-                        },
-                        Scissors = new[]
-                        {
-                            new Rect2D
-                            {
-                                Extent= this.swapChainExtent
-                            }
-                        }
-                    },
-                    RasterizationState = new PipelineRasterizationStateCreateInfo
-                    {
-                        DepthClampEnable = false,
-                        RasterizerDiscardEnable = false,
-                        PolygonMode = PolygonMode.Fill,
-                        LineWidth = 1,
-                        CullMode = CullModeFlags.Back,
-                        FrontFace = FrontFace.Clockwise,
-                        DepthBiasEnable = false
-                    },
-                    MultisampleState = new PipelineMultisampleStateCreateInfo
-                    {
-                        SampleShadingEnable = false,
-                        RasterizationSamples = SampleCountFlags.SampleCount1,
-                        MinSampleShading = 1
-                    },
-                    ColorBlendState = new PipelineColorBlendStateCreateInfo
-                    {
-                        Attachments = new[]
-                        {
-                            new PipelineColorBlendAttachmentState
-                            {
-                                ColorWriteMask = ColorComponentFlags.R
-                                                    | ColorComponentFlags.G
-                                                    | ColorComponentFlags.B
-                                                    | ColorComponentFlags.A,
-                                BlendEnable = false,
-                                SourceColorBlendFactor = BlendFactor.One,
-                                DestinationColorBlendFactor = BlendFactor.Zero,
-                                ColorBlendOp = BlendOp.Add,
-                                SourceAlphaBlendFactor = BlendFactor.One,
-                                DestinationAlphaBlendFactor = BlendFactor.Zero,
-                                AlphaBlendOp = BlendOp.Add
-                            }
-                        },
-                        LogicOpEnable = false,
-                        LogicOp = LogicOp.Copy,
-                        BlendConstants = new float[4]
-                    },
-                    Stages = new[]
-                    {
-                        new PipelineShaderStageCreateInfo
-                        {
-                            Stage = ShaderStageFlags.Vertex,
-                            Module = this.vertShader,
-                            Name = "main"
-                        },
-                        new PipelineShaderStageCreateInfo
-                        {
-                            Stage = ShaderStageFlags.Fragment,
-                            Module = this.fragShader,
-                            Name = "main"
-                        }
-                    }
-                }).Single();
+            this.pipeline = device.CreateGraphicsPipeline(null,
+                                                            new[]
+                                                            {
+                                                                new PipelineShaderStageCreateInfo
+                                                                {
+                                                                    Stage = ShaderStageFlags.Vertex,
+                                                                    Module = this.vertShader,
+                                                                    Name = "main"
+                                                                },
+                                                                new PipelineShaderStageCreateInfo
+                                                                {
+                                                                    Stage = ShaderStageFlags.Fragment,
+                                                                    Module = this.fragShader,
+                                                                    Name = "main"
+                                                                }
+                                                            },
+                                                            new PipelineVertexInputStateCreateInfo(),
+                                                            new PipelineInputAssemblyStateCreateInfo
+                                                            {
+                                                                PrimitiveRestartEnable = false,
+                                                                Topology = PrimitiveTopology.TriangleList
+                                                            },
+                                                            new PipelineRasterizationStateCreateInfo
+                                                            {
+                                                                DepthClampEnable = false,
+                                                                RasterizerDiscardEnable = false,
+                                                                PolygonMode = PolygonMode.Fill,
+                                                                LineWidth = 1,
+                                                                CullMode = CullModeFlags.Back,
+                                                                FrontFace = FrontFace.Clockwise,
+                                                                DepthBiasEnable = false
+                                                            },
+                                                            this.pipelineLayout,
+                                                            this.renderPass,
+                                                            0,
+                                                            null,
+                                                            -1,
+                                                            viewportState: new PipelineViewportStateCreateInfo
+                                                            {
+                                                                Viewports = new[]
+                                                                {
+                                                                    new Viewport(0f, 0f, this.swapChainExtent.Width, this.swapChainExtent.Height, 0, 1)
+                                                                },
+                                                                Scissors = new[]
+                                                                {
+                                                                    new Rect2D(this.swapChainExtent)
+                                                                }
+                                                            },
+                                                            colorBlendState: new PipelineColorBlendStateCreateInfo
+                                                            {
+                                                                Attachments = new[]
+                                                                {
+                                                                    new PipelineColorBlendAttachmentState
+                                                                    {
+                                                                        ColorWriteMask = ColorComponentFlags.R
+                                                                                            | ColorComponentFlags.G
+                                                                                            | ColorComponentFlags.B
+                                                                                            | ColorComponentFlags.A,
+                                                                        BlendEnable = false
+                                                                    }
+                                                                },
+                                                                LogicOpEnable = false
+                                                            },
+                                                            multisampleState: new PipelineMultisampleStateCreateInfo
+                                                            {
+                                                                SampleShadingEnable = false,
+                                                                RasterizationSamples = SampleCountFlags.SampleCount1,
+                                                                MinSampleShading = 1
+                                                            });
         }
 
         private void CreateFrameBuffers()
         {
             Framebuffer Create(ImageView imageView) => device.CreateFramebuffer(renderPass,
-                                                                                new[] { imageView },
+                                                                                imageView,
                                                                                 this.swapChainExtent.Width,
                                                                                 this.swapChainExtent.Height,
                                                                                 1);
@@ -547,11 +519,8 @@ namespace SharpVk.HelloTriangle
 
                 commandBuffer.BeginRenderPass(this.renderPass,
                                                 this.frameBuffers[index],
-                                                new Rect2D
-                                                {
-                                                    Extent = this.swapChainExtent
-                                                },
-                                                new ClearValue[1],
+                                                new Rect2D(this.swapChainExtent),
+                                                new ClearValue(),
                                                 SubpassContents.Inline);
 
                 commandBuffer.BindPipeline(PipelineBindPoint.Graphics, this.pipeline);
@@ -649,7 +618,7 @@ namespace SharpVk.HelloTriangle
 
         private bool IsSuitableDevice(PhysicalDevice device)
         {
-            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == "VK_KHR_swapchain")
+            return device.EnumerateDeviceExtensionProperties(null).Any(extension => extension.ExtensionName == KhrExtensions.Swapchain)
                     && FindQueueFamilies(device).IsComplete;
         }
 
